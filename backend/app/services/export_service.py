@@ -30,8 +30,12 @@ class ExportService:
         await self.db.flush()
         await EventService(self.db).log(project.id, user_id, "export.initiated", {"export_id": str(record.id)})
 
-        # Enqueue Celery job
-        # export_tasks.build_export.delay(str(record.id), body.model_dump())
+        # Enqueue export assembly via Celery
+        # TODO(Step 10): Ensure Redis + Celery worker are running before enabling.
+        # Uncomment when worker is confirmed live:
+        # from app.worker.tasks.export_task import build_export
+        # build_export.delay(str(record.id), body.model_dump())
+        # PLACEHOLDER: export stays "pending" until task is wired up
 
         return {
             "data": {

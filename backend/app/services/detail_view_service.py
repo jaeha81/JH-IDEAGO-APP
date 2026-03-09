@@ -34,8 +34,12 @@ class DetailViewService:
         await self.db.flush()
         await EventService(self.db).log(project.id, user_id, "detail_view.triggered", {"result_id": str(result.id)})
 
-        # Enqueue async generation task
-        # detail_view_tasks.generate.delay(str(result.id))  # Celery task — wire up when Celery is configured
+        # Enqueue async generation task via Celery
+        # TODO(Step 10): Ensure Redis + Celery worker are running before enabling.
+        # Uncomment when worker is confirmed live:
+        # from app.worker.tasks.detail_view_task import generate_detail_view
+        # generate_detail_view.delay(str(result.id))
+        # PLACEHOLDER: result stays "pending" until task is wired up
 
         return {
             "data": {

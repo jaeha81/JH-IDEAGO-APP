@@ -24,3 +24,8 @@ class ConflictError(HTTPException):
 class PayloadTooLargeError(HTTPException):
     def __init__(self, detail: str = "Payload too large"):
         super().__init__(status_code=413, detail=detail)
+
+
+class UnsupportedMediaTypeError(HTTPException):
+    def __init__(self, detail: str = "Unsupported media type"):
+        super().__init__(status_code=415, detail=detail)

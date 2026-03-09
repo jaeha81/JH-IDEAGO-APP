@@ -19,7 +19,8 @@ from app.core.storage import StorageClient
 
 @celery_app.task(bind=True, max_retries=2, default_retry_delay=10, name="detail_view.generate")
 def generate_detail_view(self, result_id: str):
-    asyncio.get_event_loop().run_until_complete(_run(result_id))
+    # asyncio.run() creates a fresh event loop — required in Celery workers (Python 3.10+)
+    asyncio.run(_run(result_id))
 
 
 async def _run(result_id: str):
@@ -42,10 +43,8 @@ async def _run(result_id: str):
         if not dv or dv.status != "pending":
             return
 
-        dv.status = "processing"
-        await db.commit()
-
         try:
+            # Note: no intermediate "processing" status — schema only allows pending|completed|failed
             project_row = await db.execute(select(Project).where(Project.id == dv.project_id))
             project = project_row.scalar_one()
 

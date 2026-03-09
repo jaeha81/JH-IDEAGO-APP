@@ -1,11 +1,20 @@
+import asyncio
+import functools
 import boto3
-from botocore.exceptions import ClientError
 from botocore.config import Config
 
 from app.config import settings
 
 
 class StorageClient:
+    """
+    S3-compatible object storage abstraction.
+    boto3 is synchronous — all calls are dispatched to a thread executor
+    to avoid blocking the asyncio event loop.
+    Local dev: MinIO (http://localhost:9000)
+    Production: AWS S3 (update STORAGE_ENDPOINT_URL or leave blank for AWS)
+    """
+
     def __init__(self):
         self._client = boto3.client(
             "s3",
@@ -16,8 +25,15 @@ class StorageClient:
         )
         self._bucket = settings.STORAGE_BUCKET_NAME
 
+    async def _run(self, func, *args, **kwargs):
+        """Run a synchronous boto3 call in a thread pool executor."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
+
     async def upload(self, key: str, data: bytes, content_type: str) -> str:
-        self._client.put_object(
+        """Upload bytes and return a presigned URL."""
+        await self._run(
+            self._client.put_object,
             Bucket=self._bucket,
             Key=key,
             Body=data,
@@ -26,8 +42,10 @@ class StorageClient:
         return await self.presign(key)
 
     async def presign(self, key: str, expiry: int | None = None) -> str:
+        """Generate a presigned GET URL."""
         expiry = expiry or settings.STORAGE_PRESIGN_EXPIRY_SECONDS
-        url = self._client.generate_presigned_url(
+        url = await self._run(
+            self._client.generate_presigned_url,
             "get_object",
             Params={"Bucket": self._bucket, "Key": key},
             ExpiresIn=expiry,
@@ -35,11 +53,16 @@ class StorageClient:
         return url
 
     async def download_bytes(self, key: str) -> bytes:
-        response = self._client.get_object(Bucket=self._bucket, Key=key)
-        return response["Body"].read()
+        """Download object and return raw bytes."""
+        response = await self._run(self._client.get_object, Bucket=self._bucket, Key=key)
+        # response["Body"].read() is also sync — wrap it
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, response["Body"].read)
 
     async def upload_zip(self, key: str, data: bytes) -> str:
-        self._client.put_object(
+        """Upload a ZIP file and return a long-lived presigned download URL."""
+        await self._run(
+            self._client.put_object,
             Bucket=self._bucket,
             Key=key,
             Body=data,

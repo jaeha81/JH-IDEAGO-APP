@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from fastapi import UploadFile, HTTPException
+from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -8,7 +8,7 @@ from app.models.asset import UploadedAsset
 from app.services.project_service import ProjectService
 from app.services.event_service import EventService
 from app.core.storage import StorageClient
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, UnsupportedMediaTypeError, PayloadTooLargeError
 from app.config import settings
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -24,14 +24,16 @@ class AssetService:
         project = await ProjectService(self.db).get_owned(user_id, project_id)
 
         if file.content_type not in ALLOWED_MIME_TYPES:
-            raise HTTPException(status_code=415, detail="Unsupported media type")
+            raise UnsupportedMediaTypeError(
+                f"Unsupported file type: {file.content_type}. Allowed: {', '.join(sorted(ALLOWED_MIME_TYPES))}"
+            )
 
         content = await file.read()
         if len(content) > MAX_BYTES:
-            raise HTTPException(status_code=413, detail=f"File exceeds {settings.MAX_UPLOAD_SIZE_MB}MB limit")
+            raise PayloadTooLargeError(f"File exceeds {settings.MAX_UPLOAD_SIZE_MB}MB limit")
 
         asset_id = uuid.uuid4()
-        ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "bin"
+        ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "bin"
         storage_key = f"projects/{project.id}/uploads/{asset_id}.{ext}"
 
         url = await self.storage.upload(storage_key, content, file.content_type)

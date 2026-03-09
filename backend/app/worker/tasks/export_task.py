@@ -28,7 +28,8 @@ from app.core.storage import StorageClient
 
 @celery_app.task(bind=True, max_retries=1, default_retry_delay=30, name="export.build")
 def build_export(self, export_id: str, options: dict):
-    asyncio.get_event_loop().run_until_complete(_run(export_id, options))
+    # asyncio.run() creates a fresh event loop — required in Celery workers (Python 3.10+)
+    asyncio.run(_run(export_id, options))
 
 
 async def _run(export_id: str, options: dict):

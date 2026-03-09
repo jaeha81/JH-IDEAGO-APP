@@ -2,7 +2,7 @@ import uuid
 import asyncio
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 import anthropic
 
 from app.models.agent import Agent
@@ -14,7 +14,11 @@ from app.services.context_builder import ContextBuilder
 from app.core.exceptions import NotFoundError
 from app.config import settings
 
-client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+def _get_client() -> anthropic.AsyncAnthropic:
+    """Lazy client initialization — avoids startup failure if ANTHROPIC_API_KEY is not set."""
+    return anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+
 
 SYSTEM_PROMPT_TEMPLATE = """You are an AI collaborator in the IDEAGO visual ideation platform.
 
@@ -49,8 +53,17 @@ class AIService:
         agents_result = await self.db.execute(agent_query)
         agents = agents_result.scalars().all()
 
+        # Generate query_id BEFORE LLM calls so it is stored with every agent_response row
+        query_id = uuid.uuid4()
+        responded_at = datetime.now(timezone.utc)
+
         if not agents:
-            return {"data": {"query_id": str(uuid.uuid4()), "responses": [], "clarification_hint": None, "responded_at": datetime.now(timezone.utc).isoformat()}}
+            return {"data": {
+                "query_id": str(query_id),
+                "responses": [],
+                "clarification_hint": None,
+                "responded_at": responded_at.isoformat(),
+            }}
 
         # Build shared context once
         ctx_builder = ContextBuilder(self.db)
@@ -59,22 +72,20 @@ class AIService:
         # Log query event
         await EventService(self.db).log(
             project.id, user_id, "agent.query.sent",
-            {"agent_ids": [str(a.id) for a in agents], "query": body.query}
+            {"query_id": str(query_id), "agent_ids": [str(a.id) for a in agents], "query": body.query}
         )
 
-        # Parallel LLM calls
+        # Parallel LLM calls — each agent responds independently
         tasks = [
-            self._call_agent(agent, context_str, body.query, project.id, seq_start, seq_end)
+            self._call_agent(agent, context_str, body.query, project.id, query_id, seq_start, seq_end)
             for agent in agents
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         responses = []
-        query_id = str(uuid.uuid4())
-        responded_at = datetime.now(timezone.utc)
-
         for agent, result in zip(agents, results):
             if isinstance(result, Exception):
+                # Graceful degradation: one failed agent does not block others
                 responses.append({
                     "agent_id": str(agent.id),
                     "role_label": agent.role_label,
@@ -82,8 +93,7 @@ class AIService:
                     "has_full_reasoning": False,
                 })
             else:
-                db_response, summary, has_full = result
-                # Reuse the same query_id across all agent responses for this query
+                _, summary, has_full = result
                 responses.append({
                     "agent_id": str(agent.id),
                     "role_label": agent.role_label,
@@ -91,13 +101,16 @@ class AIService:
                     "has_full_reasoning": has_full,
                 })
 
-        await EventService(self.db).log(project.id, user_id, "agent.response.received", {"query_id": query_id, "agent_count": len(responses)})
+        await EventService(self.db).log(
+            project.id, user_id, "agent.response.received",
+            {"query_id": str(query_id), "agent_count": len(responses)}
+        )
 
         clarification_hint = self._clarification_hint(project, body.query)
 
         return {
             "data": {
-                "query_id": query_id,
+                "query_id": str(query_id),
                 "responses": responses,
                 "clarification_hint": clarification_hint,
                 "responded_at": responded_at.isoformat(),
@@ -110,9 +123,11 @@ class AIService:
         context_str: str,
         user_query: str,
         project_id: uuid.UUID,
+        query_id: uuid.UUID,
         seq_start: int,
         seq_end: int,
     ) -> tuple:
+        client = _get_client()
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(role_label=agent.role_label, context=context_str)
 
         try:
@@ -133,6 +148,7 @@ class AIService:
 
         db_response = AgentResponse(
             id=uuid.uuid4(),
+            query_id=query_id,
             project_id=project_id,
             agent_id=agent.id,
             user_query=user_query,
@@ -149,16 +165,18 @@ class AIService:
         return db_response, summary, full_reasoning is not None
 
     async def get_full_reasoning(self, user_id: uuid.UUID, project_id: str, query_id: str, agent_id: str) -> dict:
+        """GET /projects/:id/agents/responses/:query_id/full/:agent_id"""
         project = await ProjectService(self.db).get_owned(user_id, project_id)
         result = await self.db.execute(
             select(AgentResponse).where(
+                AgentResponse.query_id == uuid.UUID(query_id),
                 AgentResponse.agent_id == uuid.UUID(agent_id),
                 AgentResponse.project_id == project.id,
-            ).order_by(AgentResponse.created_at.desc()).limit(1)
+            )
         )
         response = result.scalar_one_or_none()
         if not response:
-            raise NotFoundError("Response not found")
+            raise NotFoundError("Response not found for this query_id and agent_id")
 
         agent_result = await self.db.execute(select(Agent).where(Agent.id == response.agent_id))
         agent = agent_result.scalar_one_or_none()
@@ -174,15 +192,28 @@ class AIService:
 
     async def list_responses(self, user_id: uuid.UUID, project_id: str, page: int, per_page: int, agent_id: str | None) -> dict:
         project = await ProjectService(self.db).get_owned(user_id, project_id)
-        query = select(AgentResponse, Agent).join(Agent, AgentResponse.agent_id == Agent.id, isouter=True).where(AgentResponse.project_id == project.id)
+
+        count_query = select(func.count()).select_from(AgentResponse).where(AgentResponse.project_id == project.id)
+        query = (
+            select(AgentResponse, Agent)
+            .join(Agent, AgentResponse.agent_id == Agent.id, isouter=True)
+            .where(AgentResponse.project_id == project.id)
+        )
         if agent_id:
             query = query.where(AgentResponse.agent_id == uuid.UUID(agent_id))
+            count_query = count_query.where(AgentResponse.agent_id == uuid.UUID(agent_id))
+
+        total_result = await self.db.execute(count_query)
+        total = total_result.scalar()
+
         query = query.order_by(AgentResponse.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
         result = await self.db.execute(query)
         rows = result.all()
+
         return {
             "data": [
                 {
+                    "query_id": str(r.AgentResponse.query_id),
                     "agent_id": str(r.AgentResponse.agent_id),
                     "role_label": r.Agent.role_label if r.Agent else "Unknown",
                     "summary_text": r.AgentResponse.summary_text,
@@ -190,7 +221,8 @@ class AIService:
                     "created_at": r.AgentResponse.created_at.isoformat(),
                 }
                 for r in rows
-            ]
+            ],
+            "meta": {"total": total},
         }
 
     async def generate_title(self, user_id: uuid.UUID, project_id: str) -> dict:
@@ -198,12 +230,16 @@ class AIService:
         ctx_builder = ContextBuilder(self.db)
         context_str, _, _ = await ctx_builder.build(project, "", "")
 
+        client = _get_client()
         response = await client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=50,
             messages=[{
                 "role": "user",
-                "content": f"Based on this project context, generate a concise project title (3-7 words). Return only the title, nothing else.\n\n{context_str}"
+                "content": (
+                    "Based on this project context, generate a concise project title (3-7 words). "
+                    "Return only the title, nothing else.\n\n" + context_str
+                ),
             }],
         )
         title = response.content[0].text.strip().strip('"').strip("'")
@@ -225,7 +261,7 @@ def _parse_response(text: str) -> tuple[str, str | None]:
         summary_part = parts[0].replace("SUMMARY:", "").strip()
         full_reasoning = parts[1].strip()
         return summary_part, full_reasoning
-    # Fallback: take first 3 sentences
+    # Fallback: take first 3 sentences as summary
     sentences = text.split(". ")
     summary = ". ".join(sentences[:3]).strip()
     if not summary.endswith("."):
