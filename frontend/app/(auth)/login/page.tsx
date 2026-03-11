@@ -7,10 +7,11 @@ import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { login } from "@/lib/services/auth";
-import type { Metadata } from "next";
+import { useAuth } from "@/lib/context/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +23,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await login({ email, password });
+      await refresh();
       router.push("/projects");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

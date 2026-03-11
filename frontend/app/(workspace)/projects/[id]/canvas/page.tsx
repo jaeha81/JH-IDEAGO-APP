@@ -22,6 +22,7 @@ import { listResponses } from "@/lib/services/ai";
 import type {
   Project,
   CanvasState,
+  CanvasElement,
   UploadedAsset,
   AgentResponse,
   ToolbarState,
@@ -102,8 +103,12 @@ export default function CanvasPage() {
     return () => document.removeEventListener("keydown", handler);
   }, [handleSave, saveStatus]);
 
+  const handleElementsChanged = useCallback((elements: CanvasElement[]) => {
+    setCanvasState((prev) => prev ? { ...prev, elements } : prev);
+  }, []);
+
   const handleAssetUploaded = (asset: UploadedAsset) => {
-    // Step 11: insert image_overlay element into canvasState at viewport center
+    // Phase A-2: insert image_overlay element into canvasState at viewport center
     console.info("Asset uploaded:", asset.asset_id);
   };
 
@@ -170,9 +175,12 @@ export default function CanvasPage() {
         <CanvasArea
           canvasState={canvasState}
           activeTool={toolbar.activeTool}
+          activeColor={toolbar.activeColor}
+          strokeWidth={toolbar.strokeWidth}
           zoom={toolbar.zoom}
           isLoading={false}
           onModified={handleCanvasModified}
+          onElementsChanged={handleElementsChanged}
         />
 
         {/* Agent panel — right side, collapsible */}

@@ -1,13 +1,17 @@
 // (workspace) route group layout — wraps all authenticated pages with AppShell.
-// AppShell provides: TopBar, SideNav (md+), BottomNav (mobile).
-// Step 10: add JWT auth guard here before rendering children.
+// AuthGuard validates session via /auth/me before rendering children.
 
 import { AppShell } from "@/components/layout/AppShell";
+import AuthGuard from "@/components/auth/AuthGuard";
 
 export default function WorkspaceGroupLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShell>{children}</AppShell>;
+  return (
+    <AuthGuard>
+      <AppShell>{children}</AppShell>
+    </AuthGuard>
+  );
 }

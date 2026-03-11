@@ -4,11 +4,10 @@
 // Status polling: call getDetailView() until status === "completed" | "failed".
 
 import { api } from "@/lib/api";
-import { authHeaders } from "@/lib/services/auth";
 import { MOCK_DETAIL_VIEW_RESULT } from "@/lib/mock/workspace";
 import type { ApiResponse, DetailViewResult } from "@/types";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 export interface TriggerDetailViewInput {
   user_prompt?: string;
@@ -34,7 +33,6 @@ export async function triggerDetailView(
   const res = await api.post<ApiResponse<DetailViewResult>>(
     `/projects/${projectId}/detail-view`,
     input,
-    { headers: authHeaders() },
   );
   return res.data;
 }
@@ -49,7 +47,6 @@ export async function getDetailView(
   }
   const res = await api.get<ApiResponse<DetailViewResult>>(
     `/projects/${projectId}/detail-view/${resultId}`,
-    { headers: authHeaders() },
   );
   return res.data;
 }

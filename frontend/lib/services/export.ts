@@ -4,11 +4,10 @@
 // Status polling: call getExport() every ~3s until status === "completed" | "failed".
 
 import { api } from "@/lib/api";
-import { authHeaders } from "@/lib/services/auth";
 import { MOCK_EXPORT_RECORDS } from "@/lib/mock/export";
 import type { ApiResponse, ExportRecord } from "@/types";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 export interface InitiateExportInput {
   include_history?: boolean;
@@ -36,7 +35,6 @@ export async function initiateExport(
   const res = await api.post<ApiResponse<ExportRecord>>(
     `/projects/${projectId}/exports`,
     input,
-    { headers: authHeaders() },
   );
   return res.data;
 }
@@ -52,7 +50,6 @@ export async function getExport(
   }
   const res = await api.get<ApiResponse<ExportRecord>>(
     `/projects/${projectId}/exports/${exportId}`,
-    { headers: authHeaders() },
   );
   return res.data;
 }
@@ -64,7 +61,6 @@ export async function listExports(projectId: string): Promise<ExportRecord[]> {
   }
   const res = await api.get<ApiResponse<ExportRecord[]>>(
     `/projects/${projectId}/exports`,
-    { headers: authHeaders() },
   );
   return res.data;
 }

@@ -1,6 +1,7 @@
-// Auth route group — no auth guard, accessible to guests.
-// Step 10: Add auth guard — redirect to /projects if already logged in.
+// Auth route group — redirects to /projects if already authenticated.
+
+import GuestGuard from "@/components/auth/GuestGuard";
 
 export default function AuthGroupLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return <GuestGuard>{children}</GuestGuard>;
 }

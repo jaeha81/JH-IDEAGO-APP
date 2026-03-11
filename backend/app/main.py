@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+import traceback
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.routers import auth, projects, agents, canvas, assets, ai, detail_view, export, events
 
@@ -11,7 +13,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten in production
+    allow_origins=["http://localhost:3000"],  # specific origin required for credentials+cookies
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,6 +28,11 @@ app.include_router(ai.router, prefix="/api/v1/projects", tags=["ai"])
 app.include_router(detail_view.router, prefix="/api/v1/projects", tags=["detail-view"])
 app.include_router(export.router, prefix="/api/v1/projects", tags=["export"])
 app.include_router(events.router, prefix="/api/v1/projects", tags=["events"])
+
+
+@app.exception_handler(Exception)
+async def debug_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(status_code=500, content={"error": str(exc), "type": type(exc).__name__, "trace": traceback.format_exc()})
 
 
 @app.get("/health")

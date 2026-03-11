@@ -2,20 +2,17 @@
 // MOCK → REAL: flip USE_MOCK = false.
 
 import { api } from "@/lib/api";
-import { authHeaders } from "@/lib/services/auth";
 import { MOCK_PROJECT_DETAIL } from "@/lib/mock/projects";
 import type { Agent, ApiResponse } from "@/types";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 export async function listAgents(projectId: string): Promise<Agent[]> {
   if (USE_MOCK) {
     await delay(150);
     return MOCK_PROJECT_DETAIL.agents;
   }
-  const res = await api.get<ApiResponse<Agent[]>>(`/projects/${projectId}/agents`, {
-    headers: authHeaders(),
-  });
+  const res = await api.get<ApiResponse<Agent[]>>(`/projects/${projectId}/agents`);
   return res.data;
 }
 
@@ -40,7 +37,6 @@ export async function createAgent(
   const res = await api.post<ApiResponse<Agent>>(
     `/projects/${projectId}/agents`,
     input,
-    { headers: authHeaders() },
   );
   return res.data;
 }
@@ -64,7 +60,6 @@ export async function updateAgent(
   const res = await api.patch<ApiResponse<Agent>>(
     `/projects/${projectId}/agents/${agentId}`,
     input,
-    { headers: authHeaders() },
   );
   return res.data;
 }

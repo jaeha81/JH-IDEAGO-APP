@@ -1,28 +1,18 @@
 // API service: Authentication
-// MOCK → REAL: set USE_MOCK = false and ensure NEXT_PUBLIC_API_URL is set.
-// All token storage is in memory only — no localStorage in this scaffold.
-// TODO(Step 10): Integrate refresh token rotation using httpOnly cookie or
-//   secure storage strategy agreed with backend.
+// Cookie-based strategy: backend sets HttpOnly cookie on login/register.
+// Frontend relies on credentials: "include" (set in api.ts) for all requests.
+// Session restoration: call getMe() — if 401, user is not authenticated.
+// No client-side token storage — cookies are browser-managed.
 
 import { api } from "@/lib/api";
-import type { ApiResponse, AuthUser, TokenPair } from "@/types";
+import type { ApiResponse, AuthUser } from "@/types";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
-// In-memory token store — replace with a secure strategy in Step 10
-let _accessToken: string | null = null;
-
-export function getAccessToken(): string | null {
-  return _accessToken;
-}
-
-export function setAccessToken(token: string | null): void {
-  _accessToken = token;
-}
-
-// Inject auth header for authenticated requests
+// authHeaders() is a no-op — cookies are sent automatically via credentials: "include".
+// Kept for backward compatibility with service files that still call it.
 export function authHeaders(): HeadersInit {
-  return _accessToken ? { Authorization: `Bearer ${_accessToken}` } : {};
+  return {};
 }
 
 export interface LoginInput {
@@ -36,27 +26,22 @@ export interface RegisterInput {
   display_name?: string;
 }
 
-export async function login(input: LoginInput): Promise<TokenPair> {
+export async function login(input: LoginInput): Promise<AuthUser> {
   if (USE_MOCK) {
     await delay(400);
-    const token = "mock-access-token-" + Date.now();
-    setAccessToken(token);
-    return { access_token: token, token_type: "bearer" };
+    return { user_id: "user-001", email: input.email, display_name: "Designer" };
   }
-  const res = await api.post<ApiResponse<TokenPair>>("/auth/login", input);
-  setAccessToken(res.data.access_token);
+  // Server sets HttpOnly cookie; response body contains user info only
+  const res = await api.post<ApiResponse<AuthUser>>("/auth/login", input);
   return res.data;
 }
 
-export async function register(input: RegisterInput): Promise<TokenPair> {
+export async function register(input: RegisterInput): Promise<AuthUser> {
   if (USE_MOCK) {
     await delay(500);
-    const token = "mock-access-token-" + Date.now();
-    setAccessToken(token);
-    return { access_token: token, token_type: "bearer" };
+    return { user_id: "user-001", email: input.email, display_name: input.display_name ?? null };
   }
-  const res = await api.post<ApiResponse<TokenPair>>("/auth/register", input);
-  setAccessToken(res.data.access_token);
+  const res = await api.post<ApiResponse<AuthUser>>("/auth/register", input);
   return res.data;
 }
 
@@ -65,12 +50,18 @@ export async function getMe(): Promise<AuthUser> {
     await delay(200);
     return { user_id: "user-001", email: "designer@example.com", display_name: "Designer" };
   }
-  const res = await api.get<ApiResponse<AuthUser>>("/auth/me", { headers: authHeaders() });
+  // Uses HttpOnly cookie automatically — no Authorization header needed
+  const res = await api.get<ApiResponse<AuthUser>>("/auth/me");
   return res.data;
 }
 
-export function logout(): void {
-  setAccessToken(null);
+export async function logout(): Promise<void> {
+  if (USE_MOCK) {
+    await delay(100);
+    return;
+  }
+  // Server clears the HttpOnly cookie
+  await api.post("/auth/logout", {});
 }
 
 function delay(ms: number) {

@@ -1,21 +1,17 @@
 // API service: Projects
-// MOCK → REAL: flip USE_MOCK = false. All function signatures stay the same.
 
 import { api } from "@/lib/api";
-import { authHeaders } from "@/lib/services/auth";
 import { MOCK_PROJECTS, MOCK_PROJECT_DETAIL } from "@/lib/mock/projects";
 import type { ApiResponse, Project, ProjectSummary } from "@/types";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 export async function listProjects(): Promise<ProjectSummary[]> {
   if (USE_MOCK) {
     await delay(300);
     return MOCK_PROJECTS;
   }
-  const res = await api.get<ApiResponse<ProjectSummary[]>>("/projects", {
-    headers: authHeaders(),
-  });
+  const res = await api.get<ApiResponse<ProjectSummary[]>>("/projects");
   return res.data;
 }
 
@@ -24,9 +20,7 @@ export async function getProject(projectId: string): Promise<Project> {
     await delay(200);
     return { ...MOCK_PROJECT_DETAIL, project_id: projectId };
   }
-  const res = await api.get<ApiResponse<Project>>(`/projects/${projectId}`, {
-    headers: authHeaders(),
-  });
+  const res = await api.get<ApiResponse<Project>>(`/projects/${projectId}`);
   return res.data;
 }
 
@@ -58,9 +52,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
       export_count: 0,
     };
   }
-  const res = await api.post<ApiResponse<Project>>("/projects", input, {
-    headers: authHeaders(),
-  });
+  const res = await api.post<ApiResponse<Project>>("/projects", input);
   return res.data;
 }
 
@@ -78,9 +70,7 @@ export async function updateProject(
     await delay(200);
     return { ...MOCK_PROJECT_DETAIL, ...input, project_id: projectId };
   }
-  const res = await api.patch<ApiResponse<Project>>(`/projects/${projectId}`, input, {
-    headers: authHeaders(),
-  });
+  const res = await api.patch<ApiResponse<Project>>(`/projects/${projectId}`, input);
   return res.data;
 }
 

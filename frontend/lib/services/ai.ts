@@ -4,7 +4,6 @@
 //   full_reasoning requires a separate "See More" fetch.
 
 import { api } from "@/lib/api";
-import { authHeaders } from "@/lib/services/auth";
 import {
   MOCK_AGENT_QUERY_RESPONSE,
   MOCK_FULL_REASONING,
@@ -17,7 +16,7 @@ import type {
   AgentResponse,
 } from "@/types";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 export interface QueryAgentsInput {
   user_query: string;
@@ -44,7 +43,6 @@ export async function queryAgents(
   const res = await api.post<ApiResponse<AgentQueryResponse>>(
     `/projects/${projectId}/agents/query`,
     input,
-    { headers: authHeaders() },
   );
   return res.data;
 }
@@ -62,7 +60,6 @@ export async function getFullReasoning(
   }
   const res = await api.get<ApiResponse<AgentFullReasoning>>(
     `/projects/${projectId}/agents/responses/${queryId}/${agentId}/full`,
-    { headers: authHeaders() },
   );
   return res.data;
 }
@@ -80,7 +77,6 @@ export async function listResponses(
   }
   const res = await api.get<ApiResponse<AgentResponse[]>>(
     `/projects/${projectId}/agents/responses?page=${page}&per_page=${perPage}`,
-    { headers: authHeaders() },
   );
   return {
     responses: res.data,

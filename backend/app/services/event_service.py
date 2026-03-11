@@ -1,3 +1,5 @@
+from __future__ import annotations  # defer annotation evaluation — fixes list[X] shadowed by method name
+
 import uuid
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession

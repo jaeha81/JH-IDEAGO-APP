@@ -1,53 +1,84 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
-import type { CanvasState, DrawingTool } from "@/types";
+import { useRef, useEffect } from "react";
+import type { CanvasState, CanvasElement, DrawingTool } from "@/types";
+import { CanvasEngine } from "@/lib/canvas/engine";
 import { Spinner } from "@/components/ui/Spinner";
 
 interface CanvasAreaProps {
   canvasState: CanvasState | null;
   activeTool: DrawingTool;
+  activeColor: string;
+  strokeWidth: number;
   zoom: number;
   isLoading?: boolean;
-  /** Called when canvas has been modified — used to track "unsaved" status */
   onModified?: () => void;
+  onElementsChanged?: (elements: CanvasElement[]) => void;
 }
 
-// ─── Canvas Area scaffold ─────────────────────────────────────────────────────
-// Step 9: Renders the canvas container and placeholder.
-// Step 11: Replace placeholder with Konva.js / HTML5 Canvas drawing engine.
-//
-// The canvas element is referenced via `canvasRef` — attach the drawing engine here.
-// `canvasState.elements` is the authoritative list of what should be rendered.
-// `onModified` fires whenever the user draws/edits, enabling the save status indicator.
-
-export function CanvasArea({ canvasState, activeTool, zoom, isLoading, onModified }: CanvasAreaProps) {
+export function CanvasArea({
+  canvasState,
+  activeTool,
+  activeColor,
+  strokeWidth,
+  zoom,
+  isLoading,
+  onModified,
+  onElementsChanged,
+}: CanvasAreaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<CanvasEngine | null>(null);
 
   const cursorClass = getCursorClass(activeTool);
 
-  // Step 11: Initialize drawing engine here using canvasRef.current
+  // Initialize engine once when canvas and state are ready
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !canvasState) return;
-    // TODO(Step 11): Initialize Konva.js Stage or equivalent, load canvasState.elements
-  }, [canvasState]);
 
-  // Step 11: Update zoom transform here
-  useEffect(() => {
-    // TODO(Step 11): Apply zoom/pan transform to canvas stage
-  }, [zoom]);
+    // Avoid re-init if engine already exists for this canvas
+    if (engineRef.current) return;
 
-  // Step 11: Update active tool cursor/mode here
+    const engine = new CanvasEngine(canvas, {
+      width: canvasState.width,
+      height: canvasState.height,
+      background: canvasState.background,
+    });
+    engine.setElements(canvasState.elements);
+    engine.onElementsChanged = (elements) => {
+      onElementsChanged?.(elements);
+      onModified?.();
+    };
+    engineRef.current = engine;
+
+    return () => {
+      engine.destroy();
+      engineRef.current = null;
+    };
+    // Only init once — stable dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasState !== null]);
+
+  // Sync tool
   useEffect(() => {
-    // TODO(Step 11): Switch drawing engine mode based on activeTool
+    engineRef.current?.setTool(activeTool);
   }, [activeTool]);
 
-  const handlePointerDown = useCallback(() => {
-    // TODO(Step 11): Begin drawing operation
-    onModified?.();
-  }, [onModified]);
+  // Sync color
+  useEffect(() => {
+    engineRef.current?.setColor(activeColor);
+  }, [activeColor]);
+
+  // Sync stroke width
+  useEffect(() => {
+    engineRef.current?.setStrokeWidth(strokeWidth);
+  }, [strokeWidth]);
+
+  // Sync zoom
+  useEffect(() => {
+    engineRef.current?.setZoom(zoom);
+  }, [zoom]);
 
   return (
     <div
@@ -65,37 +96,16 @@ export function CanvasArea({ canvasState, activeTool, zoom, isLoading, onModifie
         </div>
       )}
 
-      {/* HTML5 Canvas element — drawing engine attaches here in Step 11 */}
       <canvas
         ref={canvasRef}
         className="absolute top-0 left-0 touch-none"
         style={{
           width: canvasState?.width ?? 2560,
           height: canvasState?.height ?? 1920,
-          transform: `scale(${zoom})`,
-          transformOrigin: "top left",
         }}
         width={canvasState?.width ?? 2560}
         height={canvasState?.height ?? 1920}
-        onPointerDown={handlePointerDown}
       />
-
-      {/* Placeholder — visible until drawing engine renders content */}
-      {!isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none select-none">
-          <div className="text-center opacity-20">
-            <p className="text-4xl mb-2">✏️</p>
-            <p className="text-xs text-neutral-400">
-              Canvas ready — drawing engine connects in Step 11
-            </p>
-            {canvasState && (
-              <p className="text-[10px] text-neutral-400 mt-1">
-                {canvasState.elements.length} element{canvasState.elements.length !== 1 ? "s" : ""} in state
-              </p>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Zoom level overlay */}
       <div className="absolute bottom-3 right-3 text-[11px] text-neutral-400 bg-white/80 backdrop-blur-sm rounded-lg px-2 py-1">

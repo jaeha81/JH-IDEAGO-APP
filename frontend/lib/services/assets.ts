@@ -3,11 +3,10 @@
 // File upload must be multipart/form-data — not JSON.
 
 import { api } from "@/lib/api";
-import { authHeaders } from "@/lib/services/auth";
 import { MOCK_ASSETS } from "@/lib/mock/workspace";
 import type { ApiResponse, UploadedAsset } from "@/types";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -18,7 +17,6 @@ export async function listAssets(projectId: string): Promise<UploadedAsset[]> {
   }
   const res = await api.get<ApiResponse<UploadedAsset[]>>(
     `/projects/${projectId}/assets`,
-    { headers: authHeaders() },
   );
   return res.data;
 }
@@ -45,7 +43,7 @@ export async function uploadAsset(
   formData.append("file", file);
   const res = await fetch(`${BASE_URL}/projects/${projectId}/assets`, {
     method: "POST",
-    headers: authHeaders(), // no Content-Type — let browser set boundary
+    credentials: "include", // send HttpOnly cookie (no Content-Type — browser sets boundary)
     body: formData,
   });
   if (!res.ok) {
@@ -71,7 +69,6 @@ export async function refreshAssetUrl(
   const res = await api.post<ApiResponse<{ asset_id: string; url: string; expires_at: string }>>(
     `/projects/${projectId}/assets/${assetId}/refresh-url`,
     {},
-    { headers: authHeaders() },
   );
   return res.data;
 }

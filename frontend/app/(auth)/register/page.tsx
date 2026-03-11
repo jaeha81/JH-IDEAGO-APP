@@ -7,9 +7,11 @@ import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { register } from "@/lib/services/auth";
+import { useAuth } from "@/lib/context/AuthContext";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -26,6 +28,7 @@ export default function RegisterPage() {
         password,
         display_name: displayName.trim() || undefined,
       });
+      await refresh();
       router.push("/projects");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
