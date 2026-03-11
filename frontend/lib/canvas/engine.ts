@@ -11,7 +11,7 @@ import {
   renderPreviewStroke,
   renderPreviewShape,
 } from "./renderer";
-import { handleToolEvent } from "./tools";
+import { handleToolEvent, type ToolResult } from "./tools";
 
 // ─── CanvasEngine ────────────────────────────────────────────────────────────
 
@@ -28,6 +28,9 @@ export class CanvasEngine {
 
   /** Fired after every element mutation (add/remove). Receives full element list. */
   onElementsChanged: ((elements: CanvasElement[]) => void) | null = null;
+
+  /** Fired when zoom changes from within the engine (zoom_in/zoom_out tools). */
+  onZoomChanged: ((zoom: number) => void) | null = null;
 
   // Max undo history depth
   private static MAX_UNDO = 50;
@@ -48,6 +51,9 @@ export class CanvasEngine {
       selectedElementId: null,
       color: "#000000",
       strokeWidth: 2,
+      panLastScreenX: 0,
+      panLastScreenY: 0,
+      hasMoved: false,
     };
 
     // Bind pointer events
@@ -138,6 +144,17 @@ export class CanvasEngine {
   // ─── Pointer events ─────────────────────────────────────────────────
 
   private handlePointerDown(e: PointerEvent): void {
+    // Zoom tools — handle directly, bypass tool handler
+    if (this.interaction.tool === "zoom_in" || this.interaction.tool === "zoom_out") {
+      const factor = this.interaction.tool === "zoom_in" ? 1.25 : 0.8;
+      const oldZoom = this.viewport.zoom;
+      this.setZoom(this.viewport.zoom * factor);
+      if (this.viewport.zoom !== oldZoom) {
+        this.onZoomChanged?.(this.viewport.zoom);
+      }
+      return;
+    }
+
     this.canvas.setPointerCapture(e.pointerId);
     const rect = this.canvas.getBoundingClientRect();
     const result = handleToolEvent(
@@ -169,11 +186,7 @@ export class CanvasEngine {
     this.applyToolResult(result);
   }
 
-  private applyToolResult(result: {
-    interaction: Partial<InteractionState>;
-    addElement?: CanvasElement;
-    removeIds?: string[];
-  }): void {
+  private applyToolResult(result: ToolResult): void {
     // Update interaction state
     Object.assign(this.interaction, result.interaction);
 
@@ -192,12 +205,42 @@ export class CanvasEngine {
       changed = true;
     }
 
+    // Viewport pan — no undo (viewport state is not undoable)
+    if (result.viewportDelta) {
+      this.viewport.offsetX += result.viewportDelta.dx;
+      this.viewport.offsetY += result.viewportDelta.dy;
+    }
+
+    // Move selected element — push undo only on first move of drag session
+    if (result.moveElement) {
+      const { id, dx, dy } = result.moveElement;
+      const el = this.elements.find((e) => e.id === id);
+      if (el) {
+        // Push undo on first move (hasMoved just became true in this result)
+        if (!this._moveDragUndoPushed) {
+          this.pushUndoState();
+          this._moveDragUndoPushed = true;
+        }
+        el.position_x += dx;
+        el.position_y += dy;
+        changed = true;
+      }
+    }
+
+    // Reset move-drag undo flag when drawing ends (pointer up)
+    if (result.interaction.isDrawing === false) {
+      this._moveDragUndoPushed = false;
+    }
+
     if (changed) {
       this.notifyChange();
     }
 
     this.dirty = true;
   }
+
+  /** Tracks whether undo was pushed for the current move-drag session */
+  private _moveDragUndoPushed = false;
 
   // ─── Keyboard events ────────────────────────────────────────────────
 

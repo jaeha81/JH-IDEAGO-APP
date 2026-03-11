@@ -21,6 +21,11 @@ export interface InteractionState {
   selectedElementId: string | null;
   color: string;
   strokeWidth: number;
+  /** Pan tool: last screen position for delta calculation */
+  panLastScreenX: number;
+  panLastScreenY: number;
+  /** Select+drag: whether the element was actually moved (undo gating) */
+  hasMoved: boolean;
 }
 
 // ─── Undo / Redo ─────────────────────────────────────────────────────────────

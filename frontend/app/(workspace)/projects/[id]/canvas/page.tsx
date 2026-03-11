@@ -107,6 +107,10 @@ export default function CanvasPage() {
     setCanvasState((prev) => prev ? { ...prev, elements } : prev);
   }, []);
 
+  const handleZoomChanged = useCallback((zoom: number) => {
+    setToolbar((t) => ({ ...t, zoom }));
+  }, []);
+
   const handleAssetUploaded = (asset: UploadedAsset) => {
     // Phase A-2: insert image_overlay element into canvasState at viewport center
     console.info("Asset uploaded:", asset.asset_id);
@@ -181,6 +185,7 @@ export default function CanvasPage() {
           isLoading={false}
           onModified={handleCanvasModified}
           onElementsChanged={handleElementsChanged}
+          onZoomChanged={handleZoomChanged}
         />
 
         {/* Agent panel — right side, collapsible */}

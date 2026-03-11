@@ -14,6 +14,7 @@ interface CanvasAreaProps {
   isLoading?: boolean;
   onModified?: () => void;
   onElementsChanged?: (elements: CanvasElement[]) => void;
+  onZoomChanged?: (zoom: number) => void;
 }
 
 export function CanvasArea({
@@ -25,6 +26,7 @@ export function CanvasArea({
   isLoading,
   onModified,
   onElementsChanged,
+  onZoomChanged,
 }: CanvasAreaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,6 +51,9 @@ export function CanvasArea({
     engine.onElementsChanged = (elements) => {
       onElementsChanged?.(elements);
       onModified?.();
+    };
+    engine.onZoomChanged = (z) => {
+      onZoomChanged?.(z);
     };
     engineRef.current = engine;
 

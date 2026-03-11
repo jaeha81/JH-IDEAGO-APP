@@ -9,10 +9,14 @@ type Phase = "down" | "move" | "up";
 
 // ─── Tool handler result ─────────────────────────────────────────────────────
 
-interface ToolResult {
+export interface ToolResult {
   interaction: Partial<InteractionState>;
   addElement?: CanvasElement;
   removeIds?: string[];
+  /** Viewport pan delta (move tool) — not undoable */
+  viewportDelta?: { dx: number; dy: number };
+  /** Move an existing element by delta (select tool drag) */
+  moveElement?: { id: string; dx: number; dy: number };
 }
 
 // ─── Main dispatcher ─────────────────────────────────────────────────────────
@@ -40,6 +44,8 @@ export function handleToolEvent(
       return handleShapeDrag(phase, pos, interaction, elements, "circle");
     case "select":
       return handleSelect(phase, pos, interaction, elements);
+    case "move":
+      return handlePan(phase, interaction, e.clientX, e.clientY, viewport.zoom);
     default:
       return { interaction: {} };
   }
@@ -197,7 +203,45 @@ function handleShapeDrag(
   }
 }
 
-// ─── Select tool ─────────────────────────────────────────────────────────────
+// ─── Pan tool (viewport move) ────────────────────────────────────────────────
+
+function handlePan(
+  phase: Phase,
+  interaction: InteractionState,
+  screenX: number,
+  screenY: number,
+  zoom: number,
+): ToolResult {
+  switch (phase) {
+    case "down":
+      return {
+        interaction: {
+          isDrawing: true,
+          panLastScreenX: screenX,
+          panLastScreenY: screenY,
+          selectedElementId: null,
+        },
+      };
+
+    case "move": {
+      if (!interaction.isDrawing) return { interaction: {} };
+      const dx = (screenX - interaction.panLastScreenX) / zoom;
+      const dy = (screenY - interaction.panLastScreenY) / zoom;
+      return {
+        interaction: {
+          panLastScreenX: screenX,
+          panLastScreenY: screenY,
+        },
+        viewportDelta: { dx, dy },
+      };
+    }
+
+    case "up":
+      return { interaction: { isDrawing: false } };
+  }
+}
+
+// ─── Select tool (with drag-move) ────────────────────────────────────────────
 
 function handleSelect(
   phase: Phase,
@@ -205,15 +249,60 @@ function handleSelect(
   interaction: InteractionState,
   elements: CanvasElement[],
 ): ToolResult {
-  if (phase === "down") {
-    const hit = findElementAt(elements, pos.x, pos.y);
-    return {
-      interaction: {
-        selectedElementId: hit?.id ?? null,
-      },
-    };
+  switch (phase) {
+    case "down": {
+      const hit = findElementAt(elements, pos.x, pos.y);
+      if (hit) {
+        return {
+          interaction: {
+            selectedElementId: hit.id,
+            isDrawing: true,
+            dragOrigin: { x: pos.x, y: pos.y },
+            hasMoved: false,
+          },
+        };
+      }
+      // Clicked empty area — deselect
+      return {
+        interaction: {
+          selectedElementId: null,
+          isDrawing: false,
+        },
+      };
+    }
+
+    case "move": {
+      if (
+        !interaction.isDrawing ||
+        !interaction.selectedElementId ||
+        !interaction.dragOrigin
+      ) {
+        return { interaction: {} };
+      }
+      const dx = pos.x - interaction.dragOrigin.x;
+      const dy = pos.y - interaction.dragOrigin.y;
+      // Drag threshold — ignore tiny moves
+      if (!interaction.hasMoved && Math.abs(dx) < 3 && Math.abs(dy) < 3) {
+        return { interaction: {} };
+      }
+      return {
+        interaction: {
+          dragOrigin: { x: pos.x, y: pos.y },
+          hasMoved: true,
+        },
+        moveElement: {
+          id: interaction.selectedElementId,
+          dx,
+          dy,
+        },
+      };
+    }
+
+    case "up":
+      return {
+        interaction: { isDrawing: false, dragOrigin: null },
+      };
   }
-  return { interaction: {} };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
