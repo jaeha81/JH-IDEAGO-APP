@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import type { DrawingTool, ToolbarState } from "@/types";
 
 interface ToolBarProps {
@@ -14,7 +15,6 @@ interface ToolDef {
   group: "select" | "draw" | "shape" | "view";
 }
 
-// Thin-stroke icons (strokeWidth 1.5) per design brief
 const tools: ToolDef[] = [
   {
     tool: "select",
@@ -149,17 +149,41 @@ const TOOL_GROUPS: Array<{ key: ToolDef["group"]; label: string }> = [
   { key: "view", label: "View" },
 ];
 
-const COLORS = ["#000000", "#FFFFFF", "#EF4444", "#F59E0B", "#22C55E", "#3B82F6", "#A855F7", "#EC4899"];
+const PRESET_COLORS = [
+  "#000000", "#FFFFFF", "#6B7280", "#D1D5DB",
+  "#EF4444", "#F97316", "#F59E0B", "#EAB308",
+  "#22C55E", "#10B981", "#06B6D4", "#3B82F6",
+  "#6366F1", "#A855F7", "#EC4899", "#F43F5E",
+  "#7C3AED", "#1D4ED8", "#047857", "#92400E",
+];
+
 const STROKE_WIDTHS = [1, 2, 4, 8];
 
 export function ToolBar({ state, onChange }: ToolBarProps) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const swatchRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (
+        pickerRef.current && !pickerRef.current.contains(e.target as Node) &&
+        swatchRef.current && !swatchRef.current.contains(e.target as Node)
+      ) {
+        setPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [pickerOpen]);
+
   return (
     <div
       className="flex flex-col gap-4 w-12 shrink-0 py-3 items-center"
       role="toolbar"
       aria-label="Drawing tools"
     >
-      {/* Tool groups */}
       {TOOL_GROUPS.map(({ key, label }) => {
         const groupTools = tools.filter((t) => t.group === key);
         return (
@@ -185,23 +209,56 @@ export function ToolBar({ state, onChange }: ToolBarProps) {
                 </button>
               );
             })}
-            {/* Divider between groups */}
             <hr className="border-border w-6 mx-auto my-1" />
           </div>
         );
       })}
 
-      {/* Color picker */}
-      <div className="flex flex-col gap-1 items-center">
+      <div className="relative flex flex-col gap-1 items-center">
         <p className="section-label text-center" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontSize: 9 }}>Color</p>
-        <div
-          className="h-6 w-6 rounded-lg border border-border cursor-pointer"
-          style={{ backgroundColor: state.activeColor }}
+        <button
+          ref={swatchRef}
+          aria-label={`Color: ${state.activeColor}. Click to change.`}
           title={`Color: ${state.activeColor}`}
+          onClick={() => setPickerOpen((o) => !o)}
+          className="h-6 w-6 rounded-lg border-2 border-border hover:border-white/40 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/20"
+          style={{ backgroundColor: state.activeColor }}
         />
+
+        {pickerOpen && (
+          <div
+            ref={pickerRef}
+            className="absolute left-full ml-2 bottom-0 z-50 bg-[#1A1A1A] border border-border rounded-2xl p-3 shadow-xl"
+            style={{ width: 160 }}
+          >
+            <div className="grid grid-cols-4 gap-1.5 mb-2">
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color}
+                  aria-label={color}
+                  title={color}
+                  onClick={() => { onChange({ activeColor: color }); setPickerOpen(false); }}
+                  className={[
+                    "h-7 w-7 rounded-lg border-2 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/30",
+                    state.activeColor === color ? "border-white" : "border-transparent",
+                  ].join(" ")}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] text-text-muted uppercase tracking-wider">Custom</span>
+              <input
+                type="color"
+                value={state.activeColor}
+                onChange={(e) => onChange({ activeColor: e.target.value })}
+                className="w-full h-8 rounded-lg cursor-pointer border-0 bg-transparent"
+              />
+            </label>
+          </div>
+        )}
       </div>
 
-      {/* Stroke width */}
       <div className="flex flex-col gap-1 items-center">
         {STROKE_WIDTHS.map((w) => (
           <button
@@ -223,7 +280,6 @@ export function ToolBar({ state, onChange }: ToolBarProps) {
         ))}
       </div>
 
-      {/* Zoom level display */}
       <div className="mt-auto">
         <button
           onClick={() => onChange({ zoom: 1 })}
