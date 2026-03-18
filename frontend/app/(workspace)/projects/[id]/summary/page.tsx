@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { getProject } from "@/lib/services/projects";
-import { MOCK_EVENTS } from "@/lib/mock/workspace";
+import { listEvents } from "@/lib/services/events";
 import type { Project, ProjectEvent } from "@/types";
 
 export default function ProjectSummaryPage() {
@@ -25,11 +25,10 @@ export default function ProjectSummaryPage() {
 
   useEffect(() => {
     if (!projectId) return;
-    getProject(projectId)
-      .then((proj) => {
+    Promise.all([getProject(projectId), listEvents(projectId)])
+      .then(([proj, { events }]) => {
         setProject(proj);
-        // TODO(Step 10): Swap with real events API — GET /projects/{id}/events
-        setEvents(MOCK_EVENTS);
+        setEvents(events);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load project"))
       .finally(() => setIsLoading(false));
