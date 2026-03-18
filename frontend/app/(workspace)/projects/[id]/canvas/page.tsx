@@ -1,12 +1,5 @@
 "use client";
 
-// Canvas page — the primary workspace view.
-// Fills all remaining height provided by [id]/layout.tsx.
-// Layout: ToolBar (left rail, md+) | CanvasArea (center, dominant) | AgentPanel (right, md+)
-//
-// Step 11: connect real canvas drawing engine in CanvasArea.
-// Step 10: remove mock data flags from service calls.
-
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CanvasArea } from "@/components/workspace/CanvasArea";
@@ -58,6 +51,9 @@ export default function CanvasPage() {
   const [isDetailViewOpen, setIsDetailViewOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingImageOverlay, setPendingImageOverlay] = useState<{
+    assetId: string; url: string; width: number; height: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!projectId) return;
@@ -103,6 +99,17 @@ export default function CanvasPage() {
     return () => document.removeEventListener("keydown", handler);
   }, [handleSave, saveStatus]);
 
+  useEffect(() => {
+    if (!projectId || !canvasState) return;
+    const interval = setInterval(() => {
+      if (saveStatus === "unsaved") {
+        saveCanvas(projectId, { state_json: canvasState, trigger: "auto" }).catch(() => {});
+        setSaveStatus("saved");
+      }
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [projectId, canvasState, saveStatus]);
+
   const handleElementsChanged = useCallback((elements: CanvasElement[]) => {
     setCanvasState((prev) => prev ? { ...prev, elements } : prev);
   }, []);
@@ -112,8 +119,21 @@ export default function CanvasPage() {
   }, []);
 
   const handleAssetUploaded = (asset: UploadedAsset) => {
-    // Phase A-2: insert image_overlay element into canvasState at viewport center
-    console.info("Asset uploaded:", asset.asset_id);
+    const img = new window.Image();
+    img.onload = () => {
+      const maxDim = 800;
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      setPendingImageOverlay({
+        assetId: asset.asset_id,
+        url: asset.storage_url,
+        width: Math.round(img.naturalWidth * scale),
+        height: Math.round(img.naturalHeight * scale),
+      });
+    };
+    img.onerror = () => {
+      setPendingImageOverlay({ assetId: asset.asset_id, url: asset.storage_url, width: 400, height: 300 });
+    };
+    img.src = asset.storage_url;
   };
 
   if (isLoading) {
@@ -168,14 +188,11 @@ export default function CanvasPage() {
         )}
       </div>
 
-      {/* Main area: ToolBar | Canvas | AgentPanel */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Drawing toolbar — left rail, desktop/tablet landscape only */}
         <aside className="hidden md:flex flex-col bg-surface border-r border-border shrink-0">
           <ToolBar state={toolbar} onChange={(p) => setToolbar((t) => ({ ...t, ...p }))} />
         </aside>
 
-        {/* Canvas — dominant center */}
         <CanvasArea
           canvasState={canvasState}
           activeTool={toolbar.activeTool}
@@ -186,9 +203,10 @@ export default function CanvasPage() {
           onModified={handleCanvasModified}
           onElementsChanged={handleElementsChanged}
           onZoomChanged={handleZoomChanged}
+          imageOverlayToAdd={pendingImageOverlay}
+          onImageOverlayAdded={() => setPendingImageOverlay(null)}
         />
 
-        {/* Agent panel — right side, collapsible */}
         <AgentPanel
           projectId={projectId}
           initialResponses={responses}
@@ -197,7 +215,6 @@ export default function CanvasPage() {
         />
       </div>
 
-      {/* Detail View modal — on-demand only, never auto */}
       <DetailViewModal
         isOpen={isDetailViewOpen}
         onClose={() => setIsDetailViewOpen(false)}
