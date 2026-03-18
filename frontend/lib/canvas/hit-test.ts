@@ -1,4 +1,4 @@
-import type { CanvasElement, StrokeData, ShapeData } from "@/types";
+import type { CanvasElement, StrokeData, ShapeData, TextData, ImageOverlayData } from "@/types";
 import { pointToSegmentDistance, distance } from "./utils";
 
 const HIT_TOLERANCE = 8; // pixels
@@ -36,6 +36,10 @@ function hitTest(el: CanvasElement, x: number, y: number): boolean {
       return hitTestStroke(el, x, y);
     case "shape":
       return hitTestShape(el, x, y);
+    case "text":
+      return hitTestText(el, x, y);
+    case "image_overlay":
+      return hitTestImageOverlay(el, x, y);
     default:
       return false;
   }
@@ -112,7 +116,8 @@ function hitTestShape(el: CanvasElement, x: number, y: number): boolean {
       return normalizedDist <= tolerance;
     }
 
-    case "line": {
+    case "line":
+    case "arrow": {
       const dist = pointToSegmentDistance(
         x, y,
         el.position_x, el.position_y,
@@ -124,4 +129,26 @@ function hitTestShape(el: CanvasElement, x: number, y: number): boolean {
     default:
       return false;
   }
+}
+
+function hitTestText(el: CanvasElement, x: number, y: number): boolean {
+  const data = el.data as TextData;
+  const estimatedWidth = data.content.length * data.font_size * 0.6;
+  const estimatedHeight = data.font_size * 1.4;
+  return (
+    x >= el.position_x - HIT_TOLERANCE &&
+    x <= el.position_x + estimatedWidth + HIT_TOLERANCE &&
+    y >= el.position_y - HIT_TOLERANCE &&
+    y <= el.position_y + estimatedHeight + HIT_TOLERANCE
+  );
+}
+
+function hitTestImageOverlay(el: CanvasElement, x: number, y: number): boolean {
+  const data = el.data as ImageOverlayData;
+  return (
+    x >= el.position_x &&
+    x <= el.position_x + data.width &&
+    y >= el.position_y &&
+    y <= el.position_y + data.height
+  );
 }

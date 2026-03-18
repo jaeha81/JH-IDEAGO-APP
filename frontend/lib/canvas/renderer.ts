@@ -1,5 +1,15 @@
-import type { CanvasElement, StrokeData, ShapeData } from "@/types";
+import type { CanvasElement, StrokeData, ShapeData, TextData, ImageOverlayData } from "@/types";
 import type { ViewportState } from "./types";
+
+const imageCache = new Map<string, HTMLImageElement>();
+
+export function preloadImage(assetId: string, url: string): void {
+  if (imageCache.has(assetId)) return;
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => imageCache.set(assetId, img);
+  img.src = url;
+}
 
 // ─── Main render pipeline ────────────────────────────────────────────────────
 
@@ -49,7 +59,12 @@ function renderElement(ctx: CanvasRenderingContext2D, el: CanvasElement): void {
     case "shape":
       renderShape(ctx, el.position_x, el.position_y, el.data as ShapeData);
       break;
-    // text, image_overlay → Phase A-2
+    case "text":
+      renderText(ctx, el.position_x, el.position_y, el.data as TextData);
+      break;
+    case "image_overlay":
+      renderImageOverlay(ctx, el.position_x, el.position_y, el.data as ImageOverlayData);
+      break;
     default:
       break;
   }
@@ -128,7 +143,30 @@ function renderShape(
       ctx.stroke();
       break;
 
-    // arrow → Phase A-2
+    case "arrow": {
+      const ax = ox, ay = oy, bx = ox + data.width, by = oy + data.height;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+      const angle = Math.atan2(by - ay, bx - ax);
+      const headLen = Math.max(12, data.stroke_width * 4);
+      const headAngle = Math.PI / 6;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(
+        bx - headLen * Math.cos(angle - headAngle),
+        by - headLen * Math.sin(angle - headAngle),
+      );
+      ctx.moveTo(bx, by);
+      ctx.lineTo(
+        bx - headLen * Math.cos(angle + headAngle),
+        by - headLen * Math.sin(angle + headAngle),
+      );
+      ctx.stroke();
+      break;
+    }
+
     default:
       break;
   }
@@ -184,16 +222,45 @@ export function getElementBounds(
       const data = el.data as ShapeData;
       const x = Math.min(el.position_x, el.position_x + data.width);
       const y = Math.min(el.position_y, el.position_y + data.height);
-      return {
-        x,
-        y,
-        w: Math.abs(data.width),
-        h: Math.abs(data.height),
-      };
+      return { x, y, w: Math.abs(data.width), h: Math.abs(data.height) };
+    }
+    case "text": {
+      const data = el.data as TextData;
+      const estimatedWidth = data.content.length * data.font_size * 0.6;
+      return { x: el.position_x, y: el.position_y, w: estimatedWidth, h: data.font_size * 1.4 };
+    }
+    case "image_overlay": {
+      const data = el.data as ImageOverlayData;
+      return { x: el.position_x, y: el.position_y, w: data.width, h: data.height };
     }
     default:
       return null;
   }
+}
+
+function renderText(ctx: CanvasRenderingContext2D, ox: number, oy: number, data: TextData): void {
+  ctx.save();
+  ctx.font = `${data.font_size}px ${data.font_family}`;
+  ctx.fillStyle = data.color;
+  ctx.textBaseline = "top";
+  ctx.fillText(data.content, ox, oy);
+  ctx.restore();
+}
+
+function renderImageOverlay(ctx: CanvasRenderingContext2D, ox: number, oy: number, data: ImageOverlayData): void {
+  const img = imageCache.get(data.asset_id);
+  if (!img) return;
+  ctx.save();
+  if (data.rotation) {
+    const cx = ox + data.width / 2;
+    const cy = oy + data.height / 2;
+    ctx.translate(cx, cy);
+    ctx.rotate((data.rotation * Math.PI) / 180);
+    ctx.drawImage(img, -data.width / 2, -data.height / 2, data.width, data.height);
+  } else {
+    ctx.drawImage(img, ox, oy, data.width, data.height);
+  }
+  ctx.restore();
 }
 
 // ─── Preview rendering (during active drawing) ──────────────────────────────
@@ -204,6 +271,7 @@ export function renderPreviewStroke(
   color: string,
   width: number,
   viewport: ViewportState,
+  opacity = 1,
 ): void {
   if (points.length < 2) return;
 
@@ -211,6 +279,7 @@ export function renderPreviewStroke(
   ctx.scale(viewport.zoom, viewport.zoom);
   ctx.translate(viewport.offsetX, viewport.offsetY);
 
+  ctx.globalAlpha = opacity;
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
   ctx.lineCap = "round";
@@ -227,7 +296,7 @@ export function renderPreviewStroke(
 
 export function renderPreviewShape(
   ctx: CanvasRenderingContext2D,
-  shapeType: "rect" | "circle" | "line",
+  shapeType: "rect" | "circle" | "line" | "arrow",
   originX: number,
   originY: number,
   currentX: number,
@@ -267,6 +336,29 @@ export function renderPreviewShape(
       ctx.lineTo(currentX, currentY);
       ctx.stroke();
       break;
+    case "arrow": {
+      ctx.beginPath();
+      ctx.moveTo(originX, originY);
+      ctx.lineTo(currentX, currentY);
+      ctx.stroke();
+      const angle = Math.atan2(currentY - originY, currentX - originX);
+      const headLen = Math.max(12, strokeWidth * 4);
+      const headAngle = Math.PI / 6;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(currentX, currentY);
+      ctx.lineTo(
+        currentX - headLen * Math.cos(angle - headAngle),
+        currentY - headLen * Math.sin(angle - headAngle),
+      );
+      ctx.moveTo(currentX, currentY);
+      ctx.lineTo(
+        currentX - headLen * Math.cos(angle + headAngle),
+        currentY - headLen * Math.sin(angle + headAngle),
+      );
+      ctx.stroke();
+      break;
+    }
   }
 
   ctx.setLineDash([]);
