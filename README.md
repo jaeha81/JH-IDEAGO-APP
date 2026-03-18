@@ -92,3 +92,14 @@ celery -A app.worker.celery_app worker --loglevel=info
 | [ai-orchestration-strategy.md](docs/backend-planning/ai-orchestration-strategy.md) | Agent query flow and context building |
 | [SCREEN_LIST.md](docs/figma/SCREEN_LIST.md) | All screens and implementation priority |
 | [REPO_STRUCTURE.md](docs/REPO_STRUCTURE.md) | Folder responsibility guide |
+
+---
+
+## 📊 개발 현황 <!-- jh-progress -->
+
+| 항목 | 내용 |
+|------|------|
+| **진행률** | `█████████░░░░░░░░░░░` **45%** |
+| **레포** | [JH-IDEAGO](https://github.com/jaeha81/JH-IDEAGO) |
+
+> 진행률: 45%
