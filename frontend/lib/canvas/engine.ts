@@ -1,15 +1,16 @@
-import type { CanvasElement } from "@/types";
+import type { CanvasElement, TextData, ImageOverlayData } from "@/types";
 import type {
   ViewportState,
   InteractionState,
   UndoStack,
   EngineOptions,
 } from "./types";
-import { screenToCanvas } from "./utils";
+import { screenToCanvas, generateId } from "./utils";
 import {
   renderScene,
   renderPreviewStroke,
   renderPreviewShape,
+  preloadImage,
 } from "./renderer";
 import { handleToolEvent, type ToolResult } from "./tools";
 
@@ -26,11 +27,9 @@ export class CanvasEngine {
   private rafId: number | null = null;
   private dirty = true;
 
-  /** Fired after every element mutation (add/remove). Receives full element list. */
   onElementsChanged: ((elements: CanvasElement[]) => void) | null = null;
-
-  /** Fired when zoom changes from within the engine (zoom_in/zoom_out tools). */
   onZoomChanged: ((zoom: number) => void) | null = null;
+  onInteractionChanged: ((state: { textOverlayPos: { x: number; y: number } | null }) => void) | null = null;
 
   // Max undo history depth
   private static MAX_UNDO = 50;
@@ -54,6 +53,7 @@ export class CanvasEngine {
       panLastScreenX: 0,
       panLastScreenY: 0,
       hasMoved: false,
+      textOverlayPos: null,
     };
 
     // Bind pointer events
@@ -111,6 +111,50 @@ export class CanvasEngine {
 
   getSelectedElementId(): string | null {
     return this.interaction.selectedElementId;
+  }
+
+  getTextOverlayPos(): { x: number; y: number } | null {
+    return this.interaction.textOverlayPos ?? null;
+  }
+
+  commitText(text: string, pos: { x: number; y: number }, fontSize: number, color: string): void {
+    this.interaction.textOverlayPos = null;
+    if (!text.trim()) {
+      this.dirty = true;
+      this.onInteractionChanged?.({ textOverlayPos: null });
+      return;
+    }
+    this.pushUndoState();
+    const maxZ = this.elements.length > 0 ? Math.max(...this.elements.map((e) => e.z_index)) + 1 : 1;
+    const el: CanvasElement = {
+      id: generateId(),
+      type: "text",
+      z_index: maxZ,
+      position_x: pos.x,
+      position_y: pos.y,
+      data: { content: text, font_size: fontSize, font_family: "sans-serif", color } as TextData,
+    };
+    this.elements.push(el);
+    this.dirty = true;
+    this.notifyChange();
+    this.onInteractionChanged?.({ textOverlayPos: null });
+  }
+
+  addImageOverlay(assetId: string, url: string, width: number, height: number): void {
+    preloadImage(assetId, url);
+    this.pushUndoState();
+    const maxZ = this.elements.length > 0 ? Math.max(...this.elements.map((e) => e.z_index)) + 1 : 1;
+    const el: CanvasElement = {
+      id: generateId(),
+      type: "image_overlay",
+      z_index: maxZ,
+      position_x: Math.max(0, -this.viewport.offsetX + 80),
+      position_y: Math.max(0, -this.viewport.offsetY + 80),
+      data: { asset_id: assetId, width, height, rotation: 0, annotations: [] } as ImageOverlayData,
+    };
+    this.elements.push(el);
+    this.dirty = true;
+    this.notifyChange();
   }
 
   // ─── Undo / Redo ────────────────────────────────────────────────────
@@ -236,10 +280,13 @@ export class CanvasEngine {
       this.notifyChange();
     }
 
+    if ("textOverlayPos" in result.interaction) {
+      this.onInteractionChanged?.({ textOverlayPos: this.interaction.textOverlayPos });
+    }
+
     this.dirty = true;
   }
 
-  /** Tracks whether undo was pushed for the current move-drag session */
   private _moveDragUndoPushed = false;
 
   // ─── Keyboard events ────────────────────────────────────────────────
@@ -304,12 +351,14 @@ export class CanvasEngine {
   private renderActivePreview(): void {
     const { tool, currentPoints, dragOrigin, color, strokeWidth } = this.interaction;
 
-    if (tool === "pen" && currentPoints.length >= 2) {
-      renderPreviewStroke(this.ctx, currentPoints, color, strokeWidth, this.viewport);
+    if ((tool === "pen" || tool === "brush") && currentPoints.length >= 2) {
+      const previewWidth = tool === "brush" ? Math.max(strokeWidth * 3, 8) : strokeWidth;
+      const previewOpacity = tool === "brush" ? 0.45 : 1;
+      renderPreviewStroke(this.ctx, currentPoints, color, previewWidth, this.viewport, previewOpacity);
     }
 
     if (
-      (tool === "rect" || tool === "circle" || tool === "line") &&
+      (tool === "rect" || tool === "circle" || tool === "line" || tool === "arrow") &&
       dragOrigin
     ) {
       // We need current pointer position — use last known from interaction
