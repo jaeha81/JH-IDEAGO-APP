@@ -34,6 +34,8 @@ export function handleToolEvent(
   switch (interaction.tool) {
     case "pen":
       return handlePen(phase, pos, interaction, elements);
+    case "brush":
+      return handleBrush(phase, pos, interaction, elements);
     case "eraser":
       return handleEraser(phase, pos, interaction, elements);
     case "line":
@@ -42,6 +44,10 @@ export function handleToolEvent(
       return handleShapeDrag(phase, pos, interaction, elements, "rect");
     case "circle":
       return handleShapeDrag(phase, pos, interaction, elements, "circle");
+    case "arrow":
+      return handleShapeDrag(phase, pos, interaction, elements, "arrow");
+    case "text":
+      return handleText(phase, pos);
     case "select":
       return handleSelect(phase, pos, interaction, elements);
     case "move":
@@ -113,6 +119,67 @@ function handlePen(
   }
 }
 
+// ─── Brush tool ──────────────────────────────────────────────────────────────
+
+function handleBrush(
+  phase: Phase,
+  pos: { x: number; y: number },
+  interaction: InteractionState,
+  elements: CanvasElement[],
+): ToolResult {
+  switch (phase) {
+    case "down":
+      return {
+        interaction: {
+          isDrawing: true,
+          currentPoints: [[pos.x, pos.y]],
+          selectedElementId: null,
+        },
+      };
+
+    case "move":
+      if (!interaction.isDrawing) return { interaction: {} };
+      return {
+        interaction: {
+          currentPoints: [...interaction.currentPoints, [pos.x, pos.y]],
+        },
+      };
+
+    case "up": {
+      if (!interaction.isDrawing || interaction.currentPoints.length < 2) {
+        return { interaction: { isDrawing: false, currentPoints: [] } };
+      }
+      const points = interaction.currentPoints;
+      let minX = Infinity, minY = Infinity;
+      for (const [px, py] of points) {
+        if (px < minX) minX = px;
+        if (py < minY) minY = py;
+      }
+      const normalized: [number, number][] = points.map(([px, py]) => [px - minX, py - minY]);
+
+      const newElement: CanvasElement = {
+        id: generateId(),
+        type: "stroke",
+        z_index: nextZIndex(elements),
+        position_x: minX,
+        position_y: minY,
+        data: {
+          points: normalized,
+          color: interaction.color,
+          width: Math.max(interaction.strokeWidth * 3, 8),
+          opacity: 0.45,
+          tool: "brush",
+        } as StrokeData,
+      };
+
+      return {
+        interaction: { isDrawing: false, currentPoints: [] },
+        addElement: newElement,
+      };
+    }
+  }
+}
+
 // ─── Eraser tool ─────────────────────────────────────────────────────────────
 
 function handleEraser(
@@ -151,7 +218,7 @@ function handleShapeDrag(
   pos: { x: number; y: number },
   interaction: InteractionState,
   elements: CanvasElement[],
-  shapeType: "rect" | "circle" | "line",
+  shapeType: "rect" | "circle" | "line" | "arrow",
 ): ToolResult {
   switch (phase) {
     case "down":
@@ -201,6 +268,24 @@ function handleShapeDrag(
       };
     }
   }
+}
+
+// ─── Text tool ───────────────────────────────────────────────────────────────
+
+function handleText(
+  phase: Phase,
+  pos: { x: number; y: number },
+): ToolResult {
+  if (phase === "down") {
+    return {
+      interaction: {
+        textOverlayPos: { x: pos.x, y: pos.y },
+        selectedElementId: null,
+        isDrawing: false,
+      },
+    };
+  }
+  return { interaction: {} };
 }
 
 // ─── Pan tool (viewport move) ────────────────────────────────────────────────

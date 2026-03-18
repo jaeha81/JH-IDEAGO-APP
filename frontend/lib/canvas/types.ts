@@ -26,6 +26,8 @@ export interface InteractionState {
   panLastScreenY: number;
   /** Select+drag: whether the element was actually moved (undo gating) */
   hasMoved: boolean;
+  /** Text tool: canvas position where DOM overlay input should appear */
+  textOverlayPos: { x: number; y: number } | null;
 }
 
 // ─── Undo / Redo ─────────────────────────────────────────────────────────────
