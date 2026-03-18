@@ -99,7 +99,7 @@ celery -A app.worker.celery_app worker --loglevel=info
 
 | 항목 | 내용 |
 |------|------|
-| **진행률** | `█████████░░░░░░░░░░░` **45%** |
+| **진행률** | `████████████████░░░░` **80%** |
 | **레포** | [JH-IDEAGO](https://github.com/jaeha81/JH-IDEAGO) |
 
-> 진행률: 45%
+> 진행률: 80%
