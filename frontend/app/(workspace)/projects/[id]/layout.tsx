@@ -10,9 +10,10 @@
 import { WorkspaceHeader } from "@/components/layout/WorkspaceHeader";
 
 // Required for Next.js output:export with dynamic [id] segment.
-// Empty array = no static pages pre-rendered; client-side routing handles all IDs.
+// Returns placeholder so Next.js generates the app shell for [id] routes.
+// Capacitor WebView handles all real IDs via client-side routing.
 export function generateStaticParams() {
-  return [];
+  return [{ id: "_" }];
 }
 
 interface ProjectLayoutProps {
