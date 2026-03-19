@@ -1,0 +1,14 @@
+{
+  "id": "ideago-ai-provider",
+  "name": "Multi AI Provider",
+  "version": "1.0.0",
+  "description": "Switch between AI providers (Claude, GPT-4, Gemini) with persistent selection and agent call integration",
+  "author": "IDEAGO Team",
+  "minAppVersion": "1.0.0",
+  "entry": "dist/index.js",
+  "permissions": ["agent.call", "storage.read", "storage.write", "ui.sidebar"],
+  "githubRepo": "jaeha81/JH-IDEAGO",
+  "pluginPath": "plugins/ai-provider",
+  "tags": ["ai", "provider", "claude", "gpt", "gemini", "sidebar"],
+  "size": "~8KB"
+}
