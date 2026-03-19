@@ -65,6 +65,61 @@ celery -A app.worker.celery_app worker --loglevel=info
 
 ---
 
+## APK Build (Android)
+
+IDEAGO is packaged as a native Android APK using [Capacitor](https://capacitorjs.com). The Next.js frontend is exported as a static site, wrapped in a native WebView.
+
+### Prerequisites
+- Node.js 18+
+- Android Studio (with Android SDK 33+)
+- Java 17+
+
+### Build Steps
+
+```bash
+# 1. Install dependencies
+cd frontend && npm install
+
+# 2. Build & sync (Next.js static export → Android project)
+npm run cap:sync
+
+# 3. Open in Android Studio
+npm run cap:open
+# Then: Build → Generate Signed Bundle/APK
+
+# OR: Quick debug APK via script
+cd .. && bash scripts/build-apk.sh
+```
+
+See [APK Build Guide](docs/APK-BUILD-GUIDE.md) for detailed instructions.
+
+---
+
+## Plugin System
+
+IDEAGO supports installable feature plugins. Plugins are loaded from GitHub at runtime.
+
+```
+plugins/
+├── registry/
+│   └── index.json          # Official plugin registry
+├── ai-provider/            # Multi AI provider switcher
+├── export-tools/           # Advanced export formats  
+└── template-pack/          # Project templates
+```
+
+### Install a Plugin (in-app)
+1. Open IDEAGO → Settings → Plugins
+2. Browse available plugins or paste a GitHub URL
+3. Tap Install — plugin loads instantly (no app restart)
+
+### Develop a Plugin
+See [plugins/README.md](plugins/README.md) for the plugin development guide.
+
+Plugin constraints: ≤50KB bundle, ≤200ms boot time, 0 API calls on init.
+
+---
+
 ## Core Product Principles
 
 | Principle | What it means |
