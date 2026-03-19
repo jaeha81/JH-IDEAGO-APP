@@ -25,6 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="IDEAGO" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="h-full bg-black text-white antialiased
         pt-[env(safe-area-inset-top)]
