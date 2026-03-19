@@ -1,8 +1,8 @@
 [phases.setup]
-nixPkgs = ["python311", "gcc", "libpq"]
+nixPkgs = ["python311", "gcc", "libpq", "bash"]
 
 [phases.install]
-cmds = ["pip install -r requirements.txt"]
+cmds = ["pip install -r requirements.txt", "chmod +x railway_start.sh"]
 
 [start]
-cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+cmd = "bash railway_start.sh"

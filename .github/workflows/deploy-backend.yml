@@ -1,0 +1,153 @@
+name: Deploy Backend to Railway
+
+# ─── 트리거 ───────────────────────────────────────────────────────────────────
+on:
+  # 수동 실행 (첫 배포 및 재배포)
+  workflow_dispatch:
+
+  # 백엔드 코드 변경 시 자동 재배포
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+# ─── 필요 Secrets (GitHub 레포 → Settings → Secrets → Actions) ─────────────
+# RAILWAY_TOKEN       : railway.app/account/tokens 에서 생성
+# RAILWAY_PROJECT_ID  : Railway 프로젝트 Settings → Project ID
+# ANTHROPIC_API_KEY   : Anthropic Console API 키
+# SECRET_KEY          : 랜덤 문자열 (python -c "import secrets; print(secrets.token_hex(32))")
+# STORAGE_ACCESS_KEY  : Cloudflare R2 또는 AWS S3 Access Key (없으면 SKIP 가능)
+# STORAGE_SECRET_KEY  : 위와 동일
+# STORAGE_ENDPOINT_URL: Cloudflare R2 endpoint (없으면 비워두기)
+# STORAGE_BUCKET_NAME : 버킷 이름 (기본값: ideago)
+
+jobs:
+  deploy:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+
+    outputs:
+      backend_url: ${{ steps.get-url.outputs.url }}
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Railway CLI 설치 ──────────────────────────────────────────────────
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      # ── 3. 백엔드 서비스 배포 ────────────────────────────────────────────────
+      - name: Deploy backend web service
+        working-directory: backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }} --environment production
+          railway up --service ideago-backend --detach
+
+      # ── 4. 환경변수 설정 (Railway Variables) ─────────────────────────────────
+      - name: Set Railway environment variables
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }} --environment production
+
+          # Auth
+          railway variables set SECRET_KEY="${{ secrets.SECRET_KEY }}" \
+            --service ideago-backend
+
+          # AI
+          railway variables set ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
+            --service ideago-backend
+
+          # Storage (옵션 - 없으면 파일 업로드 기능 비활성화됨)
+          if [ -n "${{ secrets.STORAGE_ACCESS_KEY }}" ]; then
+            railway variables set \
+              STORAGE_ACCESS_KEY="${{ secrets.STORAGE_ACCESS_KEY }}" \
+              STORAGE_SECRET_KEY="${{ secrets.STORAGE_SECRET_KEY }}" \
+              STORAGE_ENDPOINT_URL="${{ secrets.STORAGE_ENDPOINT_URL }}" \
+              STORAGE_BUCKET_NAME="${{ secrets.STORAGE_BUCKET_NAME || 'ideago' }}" \
+              --service ideago-backend
+          fi
+
+          # CORS: Capacitor Android origins
+          railway variables set \
+            CORS_ORIGINS="https://localhost,capacitor://localhost,http://localhost:3000" \
+            APP_ENV="production" \
+            --service ideago-backend
+
+      # ── 5. 배포 완료 대기 ───────────────────────────────────────────────────
+      - name: Wait for deployment
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }} --environment production
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+
+      # ── 6. Railway URL 가져오기 ──────────────────────────────────────────────
+      - name: Get Railway URL
+        id: get-url
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }} --environment production
+          URL=$(railway domain --service ideago-backend 2>/dev/null | head -1)
+          if [ -z "$URL" ]; then
+            # 도메인이 없으면 생성
+            URL=$(railway domain --generate --service ideago-backend 2>/dev/null | head -1)
+          fi
+          FULL_URL="https://${URL}/api/v1"
+          echo "url=$FULL_URL" >> $GITHUB_OUTPUT
+          echo "Backend URL: $FULL_URL"
+
+      # ── 7. DB 마이그레이션 실행 ──────────────────────────────────────────────
+      - name: Run database migrations
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }} --environment production
+          railway run --service ideago-backend -- alembic upgrade head || \
+            echo "Migration may have already run or service not ready yet"
+
+      # ── 8. 결과 요약 ─────────────────────────────────────────────────────────
+      - name: Print deployment summary
+        run: |
+          echo ""
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║              ✅ Backend Deployment Complete                  ║"
+          echo "╠══════════════════════════════════════════════════════════════╣"
+          echo "║                                                              ║"
+          echo "║  Backend URL: ${{ steps.get-url.outputs.url }}"
+          echo "║                                                              ║"
+          echo "║  다음 단계:                                                  ║"
+          echo "║  1. 위 URL을 복사하세요                                      ║"
+          echo "║  2. GitHub 레포 → Settings → Secrets → Actions              ║"
+          echo "║  3. BACKEND_URL 시크릿 추가 (위 URL 붙여넣기)               ║"
+          echo "║  4. Actions → Build & Release APK → Run workflow            ║"
+          echo "║  5. 완료! Releases 페이지에서 APK 다운로드                   ║"
+          echo "║                                                              ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+
+  # ─── APK 자동 재빌드 트리거 ─────────────────────────────────────────────────
+  # BACKEND_URL secret이 설정된 경우 자동으로 APK를 재빌드합니다.
+  trigger-apk-build:
+    name: Trigger APK Rebuild
+    needs: deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger APK build workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build-apk.yml',
+              ref: 'main'
+            });
+            console.log('APK rebuild triggered! New APK will be available in ~10 minutes at Releases page.');

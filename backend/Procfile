@@ -1,2 +1,2 @@
-web: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-worker: celery -A app.worker.celery_app worker --loglevel=info --concurrency=2
+web: bash railway_start.sh
+worker: DATABASE_URL=${DATABASE_URL/postgresql:\/\//postgresql+asyncpg:\/\/} DATABASE_URL_SYNC=$DATABASE_URL CELERY_BROKER_URL=${CELERY_BROKER_URL:-$REDIS_URL} CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-$REDIS_URL} celery -A app.worker.celery_app worker --loglevel=info --concurrency=2

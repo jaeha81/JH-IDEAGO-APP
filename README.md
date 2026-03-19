@@ -6,6 +6,47 @@ A tablet-first visual ideation platform. Users sketch, write, upload references,
 
 ---
 
+## 📱 Android APK 설치 (3단계)
+
+> 처음 한 번만 설정하면 이후엔 APK만 다운로드하면 됩니다.
+
+### Step 1 — Railway 백엔드 설정 (5분)
+
+1. **[railway.app](https://railway.app)** 가입 (GitHub 로그인)
+2. **New Project → Empty Project** 생성
+3. **+ New → Database → Add PostgreSQL** 추가
+4. **+ New → Database → Add Redis** 추가
+5. 프로젝트 **Settings → General → Project ID** 복사
+
+### Step 2 — GitHub Secrets 등록 (3분)
+
+레포 → **Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret 이름 | 값 | 설명 |
+|------------|-----|------|
+| `RAILWAY_TOKEN` | [railway.app/account/tokens](https://railway.app/account/tokens) | Railway API 토큰 |
+| `RAILWAY_PROJECT_ID` | Step 1에서 복사한 ID | Railway 프로젝트 ID |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` | [Anthropic Console](https://console.anthropic.com) |
+| `SECRET_KEY` | 랜덤 32자 문자열 | `python -c "import secrets; print(secrets.token_hex(32))"` |
+
+> 파일 업로드 기능도 원하면 `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_ENDPOINT_URL` 도 추가 (Cloudflare R2 무료)
+
+### Step 3 — 백엔드 배포 + APK 빌드 (10분)
+
+1. **Actions → Deploy Backend to Railway → Run workflow**
+2. 완료 후 출력된 `Backend URL` 복사
+3. Secrets에 `BACKEND_URL` 추가 (복사한 URL)
+4. **Actions → Build & Release APK → Run workflow**
+5. **[Releases](https://github.com/jaeha81/JH-IDEAGO-APP/releases/latest)** 에서 APK 다운로드 → 설치
+
+---
+
+## 📲 APK 다운로드
+
+**최신 버전:** [Releases 페이지](https://github.com/jaeha81/JH-IDEAGO-APP/releases/latest)
+
+---
+
 ## Repository Structure
 
 ```

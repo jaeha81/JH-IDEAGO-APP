@@ -13,13 +13,19 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
-    # Object Storage (S3-compatible)
-    # STORAGE_ENDPOINT_URL: leave blank for AWS S3, set to MinIO/R2/B2 endpoint for others
+    # Object Storage (S3-compatible) — all optional for core features
+    # Without storage: file uploads and AI images are disabled; all other features work.
+    # Set STORAGE_ACCESS_KEY + STORAGE_SECRET_KEY to enable file/image features.
     STORAGE_ENDPOINT_URL: str | None = None
-    STORAGE_ACCESS_KEY: str
-    STORAGE_SECRET_KEY: str
+    STORAGE_ACCESS_KEY: str | None = None
+    STORAGE_SECRET_KEY: str | None = None
     STORAGE_BUCKET_NAME: str = "ideago"
     STORAGE_PRESIGN_EXPIRY_SECONDS: int = 3600
+
+    @property
+    def storage_enabled(self) -> bool:
+        """Returns True if storage credentials are configured."""
+        return bool(self.STORAGE_ACCESS_KEY and self.STORAGE_SECRET_KEY)
 
     # CORS — comma-separated list of allowed origins.
     # Includes Capacitor Android origins (https://localhost, capacitor://localhost)
