@@ -1,0 +1,14 @@
+{
+  "id": "ideago-export-tools",
+  "name": "Advanced Export Tools",
+  "version": "1.0.0",
+  "description": "Export canvas content as Markdown, JSON, or PDF outline with format picker toolbar",
+  "author": "IDEAGO Team",
+  "minAppVersion": "1.0.0",
+  "entry": "dist/index.js",
+  "permissions": ["canvas.read", "ui.toolbar", "export.hook"],
+  "githubRepo": "jaeha81/JH-IDEAGO",
+  "pluginPath": "plugins/export-tools",
+  "tags": ["export", "markdown", "json", "pdf", "toolbar"],
+  "size": "~12KB"
+}

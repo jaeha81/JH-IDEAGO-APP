@@ -1,0 +1,14 @@
+{
+  "id": "ideago-template-pack",
+  "name": "Project Templates",
+  "version": "1.0.0",
+  "description": "6 pre-built project templates that populate your canvas with structured nodes instantly",
+  "author": "IDEAGO Team",
+  "minAppVersion": "1.0.0",
+  "entry": "dist/index.js",
+  "permissions": ["canvas.write", "ui.sidebar"],
+  "githubRepo": "jaeha81/JH-IDEAGO",
+  "pluginPath": "plugins/template-pack",
+  "tags": ["templates", "startup", "design", "research", "marketing", "architecture"],
+  "size": "~15KB"
+}

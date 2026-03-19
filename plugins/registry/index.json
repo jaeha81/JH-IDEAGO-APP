@@ -1,0 +1,58 @@
+[
+  {
+    "id": "ideago-ai-provider",
+    "name": "AI Provider",
+    "version": "1.0.0",
+    "description": "Connect and manage multiple AI providers (OpenAI, Anthropic, Google) with unified routing and fallback",
+    "author": "IDEAGO Team",
+    "minAppVersion": "1.0.0",
+    "entry": "dist/index.js",
+    "permissions": ["canvas.read", "agent.call", "storage.read", "storage.write", "network"],
+    "githubRepo": "jaeha81/JH-IDEAGO",
+    "pluginPath": "plugins/ai-provider",
+    "tags": ["ai", "core", "provider"],
+    "size": "14KB"
+  },
+  {
+    "id": "ideago-export-tools",
+    "name": "Export Tools",
+    "version": "1.0.0",
+    "description": "Export canvas projects as PDF, PNG, Markdown, or structured ZIP packages for handoff",
+    "author": "IDEAGO Team",
+    "minAppVersion": "1.0.0",
+    "entry": "dist/index.js",
+    "permissions": ["canvas.read", "export.hook", "storage.read", "ui.toolbar"],
+    "githubRepo": "jaeha81/JH-IDEAGO",
+    "pluginPath": "plugins/export-tools",
+    "tags": ["export", "pdf", "markdown", "utility"],
+    "size": "18KB"
+  },
+  {
+    "id": "ideago-template-pack",
+    "name": "Template Pack",
+    "version": "1.0.0",
+    "description": "Pre-built canvas templates for brainstorming, wireframing, user journey maps, and sprint planning",
+    "author": "IDEAGO Team",
+    "minAppVersion": "1.0.0",
+    "entry": "dist/index.js",
+    "permissions": ["canvas.read", "canvas.write", "ui.sidebar", "storage.read"],
+    "githubRepo": "jaeha81/JH-IDEAGO",
+    "pluginPath": "plugins/template-pack",
+    "tags": ["templates", "canvas", "productivity"],
+    "size": "22KB"
+  },
+  {
+    "id": "ideago-color-palette",
+    "name": "Color Palette",
+    "version": "1.0.0",
+    "description": "Extract, save, and apply color palettes from uploaded images and canvas elements",
+    "author": "IDEAGO Team",
+    "minAppVersion": "1.0.0",
+    "entry": "dist/index.js",
+    "permissions": ["canvas.read", "canvas.write", "ui.sidebar", "storage.read", "storage.write"],
+    "githubRepo": "jaeha81/JH-IDEAGO",
+    "pluginPath": "plugins/color-palette",
+    "tags": ["design", "color", "utility"],
+    "size": "9KB"
+  }
+]
