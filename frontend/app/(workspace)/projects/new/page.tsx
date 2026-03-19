@@ -55,7 +55,7 @@ export default function NewProjectPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-8 py-10">
+    <div className="flex-1 overflow-y-auto px-4 py-10">
       <div className="max-w-xl mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-white">New project</h1>

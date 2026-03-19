@@ -27,7 +27,7 @@ export function TopBar({ actions }: TopBarProps) {
 
   return (
     <header
-      className="glass sticky top-0 z-40 flex h-14 items-center gap-4 px-4 md:px-5 shrink-0"
+      className="glass sticky top-0 z-40 flex h-14 items-center gap-4 px-4 shrink-0"
       role="banner"
     >
       {/* Brand */}

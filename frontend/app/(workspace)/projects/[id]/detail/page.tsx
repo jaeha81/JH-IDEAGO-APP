@@ -13,7 +13,7 @@ export default function DetailPage() {
   const { id: projectId } = useParams<{ id: string }>();
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8">
+    <div className="flex-1 overflow-y-auto px-4 py-8">
       <PlaceholderPage
         title="Detail View"
         description="Generate a high-fidelity visualization from the current canvas state. On-demand only — never auto-generated. Implementation arrives in Step 11."

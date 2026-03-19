@@ -45,7 +45,7 @@ export default function ExportPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8">
+    <div className="flex-1 overflow-y-auto px-4 py-8">
       <ExportPanel projectId={projectId} projectTitle={project.title} />
     </div>
   );

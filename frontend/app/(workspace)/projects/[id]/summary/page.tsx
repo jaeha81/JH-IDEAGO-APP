@@ -52,7 +52,7 @@ export default function ProjectSummaryPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8">
+    <div className="flex-1 overflow-y-auto px-4 py-8">
       <div className="max-w-3xl mx-auto space-y-8">
         <h1 className="text-2xl font-semibold text-white">
           {project.title ?? <span className="text-text-muted italic">Untitled</span>}

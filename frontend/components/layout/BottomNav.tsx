@@ -115,7 +115,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="md:hidden flex items-stretch border-t border-border bg-surface h-14 shrink-0"
+      className="flex items-stretch border-t border-border bg-surface h-14 shrink-0"
       aria-label={projectId ? "Workspace navigation" : "Main navigation"}
     >
       {tabs.map((tab) => {

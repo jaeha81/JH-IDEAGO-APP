@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CanvasArea } from "@/components/workspace/CanvasArea";
-import { ToolBar } from "@/components/workspace/ToolBar";
+import { MobileToolBar } from "@/components/workspace/MobileToolBar";
 import { AgentPanel } from "@/components/workspace/AgentPanel";
 import { UploadButton } from "@/components/workspace/UploadButton";
 import { DetailViewModal } from "@/components/workspace/DetailViewModal";
@@ -188,11 +188,7 @@ export default function CanvasPage() {
         )}
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="hidden md:flex flex-col bg-surface border-r border-border shrink-0">
-          <ToolBar state={toolbar} onChange={(p) => setToolbar((t) => ({ ...t, ...p }))} />
-        </aside>
-
+      <div className="relative flex-1 overflow-hidden">
         <CanvasArea
           canvasState={canvasState}
           activeTool={toolbar.activeTool}
@@ -207,12 +203,34 @@ export default function CanvasPage() {
           onImageOverlayAdded={() => setPendingImageOverlay(null)}
         />
 
-        <AgentPanel
-          projectId={projectId}
-          initialResponses={responses}
-          isOpen={isAgentPanelOpen}
-          onClose={() => setIsAgentPanelOpen(false)}
-        />
+        {/* Floating mobile toolbar */}
+        <MobileToolBar state={toolbar} onChange={(p) => setToolbar((t) => ({ ...t, ...p }))} />
+
+        {/* Agent panel toggle button */}
+        {!isAgentPanelOpen && (
+          <button
+            onClick={() => setIsAgentPanelOpen(true)}
+            className="absolute bottom-4 right-4 w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+            aria-label="Open agent panel"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="10" cy="7" r="3.5" />
+              <path d="M3 18c0-3.5 3-6 7-6s7 2.5 7 6" />
+            </svg>
+          </button>
+        )}
+
+        {/* Agent panel as bottom sheet overlay */}
+        {isAgentPanelOpen && (
+          <div className="absolute inset-0 z-30 flex flex-col bg-surface/95 backdrop-blur-sm">
+            <AgentPanel
+              projectId={projectId}
+              initialResponses={responses}
+              isOpen={isAgentPanelOpen}
+              onClose={() => setIsAgentPanelOpen(false)}
+            />
+          </div>
+        )}
       </div>
 
       <DetailViewModal

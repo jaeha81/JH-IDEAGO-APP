@@ -12,7 +12,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ projectTitle, saveStatus, actions, minimal }: AppHeaderProps) {
   return (
-    <header className="glass sticky top-0 z-40 flex h-14 items-center gap-4 px-4 md:px-6">
+    <header className="glass sticky top-0 z-40 flex h-14 items-center gap-4 px-4">
       {/* Brand */}
       <Link href="/projects" className="flex items-baseline gap-1.5 shrink-0">
         <span className="text-base font-semibold tracking-tight text-white">IDEAGO</span>

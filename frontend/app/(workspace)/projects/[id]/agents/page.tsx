@@ -13,7 +13,7 @@ export default function AgentsPage() {
   const { id: projectId } = useParams<{ id: string }>();
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8">
+    <div className="flex-1 overflow-y-auto px-4 py-8">
       <PlaceholderPage
         title="Agents"
         description="Manage agent roles and view the full response history. Implementation arrives in Step 11."

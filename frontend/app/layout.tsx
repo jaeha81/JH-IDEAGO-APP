@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
-      <body className="h-full bg-[#0F0F0F] text-white antialiased
+      <body className="h-full bg-black text-white antialiased
         pt-[env(safe-area-inset-top)]
         pb-[env(safe-area-inset-bottom)]
         pl-[env(safe-area-inset-left)]

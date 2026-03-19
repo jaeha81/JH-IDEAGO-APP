@@ -28,12 +28,12 @@ export default function ProjectsPage() {
   const archivedProjects = projects.filter((p) => p.status === "archived");
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-8 py-10">
+    <div className="flex-1 overflow-y-auto px-4 py-10">
       <div className="max-w-4xl mx-auto">
         {/* Page header */}
         <div className="flex items-start justify-between mb-10 gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-white">
+            <h1 className="text-2xl font-semibold tracking-tight text-white">
               Projects
             </h1>
             <p className="text-text-secondary mt-1 text-sm max-w-sm">
@@ -78,7 +78,7 @@ export default function ProjectsPage() {
         {activeProjects.length > 0 && (
           <section className="mb-10">
             <p className="section-label mb-4">Active</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {activeProjects.map((p) => (
                 <ProjectCard key={p.project_id} project={p} />
               ))}
@@ -90,7 +90,7 @@ export default function ProjectsPage() {
         {archivedProjects.length > 0 && (
           <section>
             <p className="section-label mb-4">Archived</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {archivedProjects.map((p) => (
                 <ProjectCard key={p.project_id} project={p} />
               ))}

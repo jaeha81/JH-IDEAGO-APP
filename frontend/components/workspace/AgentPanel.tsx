@@ -67,22 +67,11 @@ export function AgentPanel({ projectId, initialResponses = [], isOpen, onClose }
   };
 
   if (!isOpen) {
-    return (
-      <button
-        onClick={() => setState((s) => ({ ...s, isOpen: true }))}
-        className="hidden md:flex items-center justify-center h-full w-10 bg-surface border-l border-border text-text-secondary hover:text-white hover:bg-surface-raised transition-colors"
-        title="Open agent panel"
-        aria-label="Open agent panel"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M10 3l-6 5 6 5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-    );
+    return null;
   }
 
   return (
-    <div className="flex flex-col w-full md:w-80 lg:w-96 shrink-0 bg-surface border-l border-border">
+    <div className="flex flex-col w-full flex-1 bg-surface">
       {/* Panel header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <p className="section-label">Agents</p>

@@ -4,7 +4,7 @@ export const metadata = { title: "Settings" };
 
 export default function SettingsPage() {
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-8 py-10">
+    <div className="flex-1 overflow-y-auto px-4 py-10">
       <div className="mb-10 max-w-3xl">
         <h1 className="text-2xl font-semibold text-white">Settings</h1>
         <p className="text-sm text-text-secondary mt-1">

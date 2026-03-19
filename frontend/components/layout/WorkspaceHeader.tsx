@@ -34,7 +34,7 @@ export function WorkspaceHeader({ projectId, projectTitle, actions }: WorkspaceH
 
   return (
     <div
-      className="flex items-center h-11 px-3 md:px-4 gap-3 border-b border-border bg-surface shrink-0"
+      className="flex items-center h-11 px-3 gap-3 border-b border-border bg-surface shrink-0"
       role="navigation"
       aria-label="Project sections"
     >
@@ -52,14 +52,14 @@ export function WorkspaceHeader({ projectId, projectTitle, actions }: WorkspaceH
 
       {/* Project title */}
       <span
-        className="text-sm font-medium text-white truncate max-w-[120px] md:max-w-[200px] shrink-0"
+        className="text-sm font-medium text-white truncate max-w-[160px] shrink-0"
         title={projectTitle ?? "Untitled"}
       >
         {projectTitle ?? <span className="italic text-text-muted">Untitled</span>}
       </span>
 
       {/* Divider */}
-      <span className="text-border-strong select-none shrink-0 hidden sm:block">/</span>
+      <span className="text-border-strong select-none shrink-0">/</span>
 
       {/* Tab pills */}
       <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-none" aria-label="Workspace tabs">
