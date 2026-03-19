@@ -64,6 +64,16 @@ export async function updateAgent(
   return res.data;
 }
 
+export async function deactivateAgent(
+  projectId: string,
+  agentId: string,
+): Promise<{ deleted: boolean }> {
+  const res = await api.delete<ApiResponse<{ deleted: boolean }>>(
+    `/projects/${projectId}/agents/${agentId}`,
+  );
+  return res.data;
+}
+
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

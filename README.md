@@ -154,7 +154,7 @@ Plugin constraints: ≤50KB bundle, ≤200ms boot time, 0 API calls on init.
 
 | 항목 | 내용 |
 |------|------|
-| **진행률** | `████████████████░░░░` **80%** |
+| **진행률** | `████████████████████` **100%** |
 | **레포** | [JH-IDEAGO](https://github.com/jaeha81/JH-IDEAGO) |
 
-> 진행률: 80%
+> 진행률: 100% — 전체 풀스택 완성

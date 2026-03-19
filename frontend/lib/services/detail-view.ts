@@ -51,6 +51,15 @@ export async function getDetailView(
   return res.data;
 }
 
+export async function listDetailViews(
+  projectId: string,
+): Promise<DetailViewResult[]> {
+  const res = await api.get<ApiResponse<DetailViewResult[]>>(
+    `/projects/${projectId}/detail-view`,
+  );
+  return res.data;
+}
+
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

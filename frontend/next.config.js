@@ -1,7 +1,11 @@
 /** @type {import('next').NextConfig} */
+// output: "export" is only enabled for Capacitor/APK builds.
+// Set CAPACITOR_BUILD=true env var when building for Android/iOS.
+// Normal web builds use server-side rendering with dynamic routes.
+const isCapacitorBuild = process.env.CAPACITOR_BUILD === "true";
+
 const nextConfig = {
-  output: "export",
-  trailingSlash: true,
+  ...(isCapacitorBuild ? { output: "export", trailingSlash: true } : {}),
 
   images: {
     unoptimized: true,
