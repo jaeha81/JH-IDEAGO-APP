@@ -66,9 +66,9 @@ fi
 # --- Next.js static export build ---
 echo ""
 echo "--- Building Next.js static export ---"
-npx next build
+CAPACITOR_BUILD=true npx next build
 if [ ! -d "$FRONTEND_DIR/out" ]; then
-  error "Build failed: 'out' directory not created. Check next.config.js has output: 'export'"
+  error "Build failed: 'out' directory not created. CAPACITOR_BUILD=true required for static export."
 fi
 log "Next.js build complete (out/)"
 

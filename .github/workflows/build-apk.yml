@@ -1,0 +1,135 @@
+name: Build & Release APK
+
+on:
+  # 수동 트리거 (GitHub Actions 탭 → Run workflow)
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g. v1.0.0). Leave empty to use v{YYYY.MM.DD}'
+        required: false
+        default: ''
+
+  # main 브랜치 push 시 자동 빌드
+  push:
+    branches: [main]
+    paths:
+      # 프론트엔드 코드 변경 시에만 APK 재빌드
+      - 'frontend/**'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build-apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ───────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Node.js setup ──────────────────────────────────────────────────
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # ── 3. Java 17 (required for Gradle / Android SDK) ───────────────────
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # ── 4. Android SDK ────────────────────────────────────────────────────
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # ── 5. Frontend dependencies ──────────────────────────────────────────
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # ── 6. Next.js static export (Capacitor mode) ────────────────────────
+      - name: Build Next.js static export
+        working-directory: frontend
+        env:
+          CAPACITOR_BUILD: 'true'
+          NEXT_PUBLIC_API_URL: 'https://api.ideago.com/api/v1'
+        run: npm run build
+        # Output: frontend/out/
+
+      # ── 7. Install Capacitor CLI ──────────────────────────────────────────
+      - name: Install Capacitor CLI
+        working-directory: frontend
+        run: npm install -g @capacitor/cli@6
+
+      # ── 8. Add Android platform (first time) ─────────────────────────────
+      - name: Add Android platform
+        working-directory: frontend
+        run: npx cap add android || echo "Android platform already exists"
+
+      # ── 9. Sync Capacitor ─────────────────────────────────────────────────
+      - name: Sync Capacitor
+        working-directory: frontend
+        run: npx cap sync android
+
+      # ── 10. Make Gradle wrapper executable ───────────────────────────────
+      - name: Set Gradle wrapper permissions
+        working-directory: frontend/android
+        run: chmod +x gradlew
+
+      # ── 11. Build debug APK ───────────────────────────────────────────────
+      - name: Build debug APK
+        working-directory: frontend/android
+        run: ./gradlew assembleDebug --no-daemon
+        env:
+          GRADLE_OPTS: '-Dorg.gradle.daemon=false -Xmx4g'
+
+      # ── 12. Rename APK with version ───────────────────────────────────────
+      - name: Rename APK
+        id: rename_apk
+        run: |
+          TAG="${{ github.event.inputs.release_tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="v$(date +'%Y.%m.%d')-$(echo ${{ github.sha }} | cut -c1-7)"
+          fi
+          APK_NAME="IDEAGO-${TAG}-debug.apk"
+          cp frontend/android/app/build/outputs/apk/debug/app-debug.apk "$APK_NAME"
+          echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      # ── 13. Upload as build artifact (always available) ──────────────────
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.rename_apk.outputs.apk_name }}
+          path: ${{ steps.rename_apk.outputs.apk_name }}
+          retention-days: 30
+
+      # ── 14. Create GitHub Release with APK download link ─────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.rename_apk.outputs.tag }}
+          name: "IDEAGO ${{ steps.rename_apk.outputs.tag }}"
+          body: |
+            ## IDEAGO Android APK
+
+            ### 설치 방법
+            1. 아래 **Assets** 에서 `.apk` 파일 다운로드
+            2. Android 기기 → 설정 → 보안 → **알 수 없는 출처 허용**
+            3. 다운로드된 APK 파일 실행하여 설치
+
+            ### 빌드 정보
+            - Commit: `${{ github.sha }}`
+            - Branch: `${{ github.ref_name }}`
+            - Build time: `${{ github.event.head_commit.timestamp }}`
+
+            > ⚠️ Debug 빌드입니다. 개인 사용 목적으로만 배포됩니다.
+          files: ${{ steps.rename_apk.outputs.apk_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
