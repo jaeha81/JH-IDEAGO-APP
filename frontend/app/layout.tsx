@@ -9,17 +9,29 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // Tablet-first: disable pinch-zoom so canvas interactions are precise
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#0F0F0F",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full">
-      <body className="h-full bg-[#0F0F0F] text-white antialiased">
+      <head>
+        <meta name="theme-color" content="#0F0F0F" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
+      <body className="h-full bg-[#0F0F0F] text-white antialiased
+        pt-[env(safe-area-inset-top)]
+        pb-[env(safe-area-inset-bottom)]
+        pl-[env(safe-area-inset-left)]
+        pr-[env(safe-area-inset-right)]"
+      >
         <Providers>{children}</Providers>
       </body>
     </html>
