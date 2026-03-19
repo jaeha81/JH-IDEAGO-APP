@@ -1,33 +1,32 @@
-// Project workspace layout — sits inside AppShell, adds WorkspaceHeader tabs.
-// Server component: fetches project title for the header at layout level so
-// all child pages (canvas, agents, detail, export) inherit it without refetching.
+// Project workspace layout — server component.
 //
-// Layout chain:
-//   RootLayout → AppShell (TopBar + SideNav + BottomNav) → [this] (WorkspaceHeader) → page
+// generateStaticParams returns [] so Next.js output:export skips pre-rendering
+// for unknown [id] values. The Capacitor WebView handles all [id] routes
+// client-side via Next.js router — no per-ID HTML file is needed.
+//
+// Note: project title not fetched here (no server API calls in static export).
+// WorkspaceHeader shows "Untitled" by default; page components fetch their own data.
 
 import { WorkspaceHeader } from "@/components/layout/WorkspaceHeader";
-import { getProject } from "@/lib/services/projects";
+
+// Required for Next.js output:export with dynamic [id] segment.
+// Empty array = no static pages pre-rendered; client-side routing handles all IDs.
+export function generateStaticParams() {
+  return [];
+}
 
 interface ProjectLayoutProps {
   children: React.ReactNode;
   params: { id: string };
 }
 
-export default async function ProjectLayout({ children, params }: ProjectLayoutProps) {
-  // Lightweight fetch for header title — pages fetch full project detail themselves.
-  // Falls back gracefully if fetch fails (mock or real API).
-  const project = await getProject(params.id).catch(() => null);
-
+export default function ProjectLayout({ children, params }: ProjectLayoutProps) {
   return (
-    // Fill the full height provided by AppShell's main area.
-    // flex-col so WorkspaceHeader (fixed height) + page (flex-1) stack cleanly.
     <div className="flex flex-col h-full overflow-hidden">
       <WorkspaceHeader
         projectId={params.id}
-        projectTitle={project?.title ?? null}
+        projectTitle={null}
       />
-
-      {/* Page content — each page controls its own scroll/overflow */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {children}
       </div>
