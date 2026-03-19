@@ -13,12 +13,18 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
-    # Object Storage
-    STORAGE_ENDPOINT_URL: str
+    # Object Storage (S3-compatible)
+    # STORAGE_ENDPOINT_URL: leave blank for AWS S3, set to MinIO/R2/B2 endpoint for others
+    STORAGE_ENDPOINT_URL: str | None = None
     STORAGE_ACCESS_KEY: str
     STORAGE_SECRET_KEY: str
     STORAGE_BUCKET_NAME: str = "ideago"
     STORAGE_PRESIGN_EXPIRY_SECONDS: int = 3600
+
+    # CORS — comma-separated list of allowed origins.
+    # Includes Capacitor Android origins (https://localhost, capacitor://localhost)
+    # and any production web front-end URL.
+    CORS_ORIGINS: str = "http://localhost:3000,https://localhost,capacitor://localhost"
 
     # AI
     ANTHROPIC_API_KEY: str

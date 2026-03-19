@@ -52,11 +52,14 @@ jobs:
         run: npm ci
 
       # ── 6. Next.js static export (Capacitor mode) ────────────────────────
+      # BACKEND_URL secret: Railway 배포 후 설정
+      # GitHub 레포 → Settings → Secrets → Actions → New repository secret
+      # Name: BACKEND_URL  Value: https://your-app.railway.app/api/v1
       - name: Build Next.js static export
         working-directory: frontend
         env:
           CAPACITOR_BUILD: 'true'
-          NEXT_PUBLIC_API_URL: 'https://api.ideago.com/api/v1'
+          NEXT_PUBLIC_API_URL: ${{ secrets.BACKEND_URL || 'https://api.ideago.com/api/v1' }}
         run: npm run build
         # Output: frontend/out/
 
@@ -122,10 +125,13 @@ jobs:
             2. Android 기기 → 설정 → 보안 → **알 수 없는 출처 허용**
             3. 다운로드된 APK 파일 실행하여 설치
 
+            ### 백엔드 연결
+            - API URL: `${{ secrets.BACKEND_URL || 'https://api.ideago.com/api/v1' }}`
+            - 백엔드가 배포되지 않은 경우 앱이 오프라인으로 작동합니다.
+
             ### 빌드 정보
             - Commit: `${{ github.sha }}`
             - Branch: `${{ github.ref_name }}`
-            - Build time: `${{ github.event.head_commit.timestamp }}`
 
             > ⚠️ Debug 빌드입니다. 개인 사용 목적으로만 배포됩니다.
           files: ${{ steps.rename_apk.outputs.apk_name }}

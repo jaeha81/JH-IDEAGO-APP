@@ -16,9 +16,11 @@ class StorageClient:
     """
 
     def __init__(self):
+        # endpoint_url=None → standard AWS S3
+        # endpoint_url="https://..." → MinIO / Cloudflare R2 / Backblaze B2
         self._client = boto3.client(
             "s3",
-            endpoint_url=settings.STORAGE_ENDPOINT_URL,
+            endpoint_url=settings.STORAGE_ENDPOINT_URL or None,
             aws_access_key_id=settings.STORAGE_ACCESS_KEY,
             aws_secret_access_key=settings.STORAGE_SECRET_KEY,
             config=Config(signature_version="s3v4"),
@@ -28,7 +30,9 @@ class StorageClient:
     async def _run(self, func, *args, **kwargs):
         """Run a synchronous boto3 call in a thread pool executor."""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
+        return await loop.run_in_executor(
+            None, functools.partial(func, *args, **kwargs)
+        )
 
     async def upload(self, key: str, data: bytes, content_type: str) -> str:
         """Upload bytes and return a presigned URL."""
@@ -54,7 +58,9 @@ class StorageClient:
 
     async def download_bytes(self, key: str) -> bytes:
         """Download object and return raw bytes."""
-        response = await self._run(self._client.get_object, Bucket=self._bucket, Key=key)
+        response = await self._run(
+            self._client.get_object, Bucket=self._bucket, Key=key
+        )
         # response["Body"].read() is also sync — wrap it
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, response["Body"].read)
@@ -68,4 +74,6 @@ class StorageClient:
             Body=data,
             ContentType="application/zip",
         )
-        return await self.presign(key, expiry=settings.EXPORT_DOWNLOAD_EXPIRY_HOURS * 3600)
+        return await self.presign(
+            key, expiry=settings.EXPORT_DOWNLOAD_EXPIRY_HOURS * 3600
+        )
