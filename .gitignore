@@ -47,3 +47,21 @@ backend/uploads/
 
 # OS
 .DS_Store
+
+# Android (Capacitor generated project — DO commit android/ root but ignore build artifacts)
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/app/release/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Capacitor
+frontend/.cap/
+
+# Plugin dist files are committed intentionally (pre-built bundles)
+# plugins/**/node_modules/
+# plugins/**/src/*.js.map
